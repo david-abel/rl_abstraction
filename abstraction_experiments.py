@@ -3,7 +3,7 @@ import random as r
 from collections import defaultdict
 import itertools
 
-# Non-standard imports.
+# Other imports.
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent
 from simple_rl.tasks import ChainMDP, GridWorldMDP, TaxiOOMDP, RandomMDP
 from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
@@ -69,7 +69,7 @@ def make_sa(mdp, indicator_func):
 
     return sa
 
-def make_mdp_distr(mdp_class="grid", num_mdps=1):
+def make_mdp_distr(mdp_class="grid", num_mdps=10):
     '''
     Args:
         mdp_class (str): one of {"grid", "random"}
@@ -82,7 +82,7 @@ def make_mdp_distr(mdp_class="grid", num_mdps=1):
     mdp_prob = 1.0/num_mdps
 
     for i in range(num_mdps):
-        mdp_distr[mdp_prob] = {"grid":GridWorldMDP(10,10, (1, 1), (10, r.randint(1,10))),
+        mdp_distr[mdp_prob] = {"grid":GridWorldMDP(width=5, height=3, init_loc=(1, 1), goal_locs=[(r.randint(1,5), 3)]),
                                 "random":RandomMDP(num_states=40, num_rand_trans=r.randint(1,10))}[mdp_class]
 
     return mdp_distr
@@ -91,9 +91,9 @@ def make_mdp_distr(mdp_class="grid", num_mdps=1):
 def main():
 
     # Multi Task
-    # mdp_distr = make_mdp_distr(mdp_class="grid")
-    # actions = mdp_distr.values()[0].actions
-    # gamma = mdp_distr.values()[0].gamma
+    mdp_distr = make_mdp_distr(mdp_class="grid")
+    actions = mdp_distr.values()[0].actions
+    gamma = mdp_distr.values()[0].gamma
 
     # Single MDP
     goal_locs = []
@@ -106,29 +106,29 @@ def main():
     gamma = mdp.gamma
 
     # Make Q equivalence state abstraction.
-    q_equiv_sa = make_sa(mdp, _q_eps_approx_indicator)
+    # q_equiv_sa = make_sa(mdp, _q_eps_approx_indicator)
 
     # AGENTS
     random_agent = RandomAgent(actions)
-    rand_abstr_agent = AbstractionWrapper(random_agent, q_equiv_sa)
+    # rand_abstr_agent = AbstractionWrapper(random_agent)
 
     rmax_agent = RMaxAgent(actions, gamma=gamma, horizon=7, s_a_threshold=25)
-    abstr_rmax_agent = AbstractionWrapper(rmax_agent, q_equiv_sa)
+    abstr_rmax_agent = AbstractionWrapper(rmax_agent)
 
     qlearner_agent = QLearnerAgent(actions, gamma=gamma, explore="uniform")
-    abstr_qlearner_agent = AbstractionWrapper(qlearner_agent, q_equiv_sa)
+    # abstr_qlearner_agent = AbstractionWrapper(qlearner_agent)
 
     # Run single MDP experiment.
-    # run_agents_on_mdp([rmax_agent, abstr_rmax_agent], mdp, instances=100, episodes=1, steps=50)
+    # run_agents_on_mdp([rmax_agent, abstr_rmax_agent], mdp, instances=50, episodes=1, steps=50)
 
     # Visualize uncompressed
     # visualize_mdp(mdp)
 
     # Visualize compressed
-    visualize_mdp(mdp, q_equiv_sa.phi)
+    # visualize_mdp(mdp, q_equiv_sa.phi)
 
     # Run experiments.
-    # run_agents_multi_task([random_agent, rand_abstr_agent], mdp_distr, instances=5, num_switches=10, steps=20)
+    run_agents_multi_task([rmax_agent, abstr_rmax_agent], mdp_distr, instances=50, num_switches=10, steps=50)
 
 if __name__ == "__main__":
     main()

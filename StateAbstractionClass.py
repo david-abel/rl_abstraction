@@ -1,13 +1,12 @@
 # Python imports.
 from collections import defaultdict
 
-# Non-standard imports.
+# Other imports.
 from simple_rl.mdp.StateClass import State
 
 class StateAbstraction(object):
 
-	def __init__(self, condition=lambda x,y: x == y):
-		self.condition = condition
+	def __init__(self):
 		self._phi = {} # key:state, val:int. (int represents an abstract state).
 		
 	def phi(self, state):
@@ -21,7 +20,9 @@ class StateAbstraction(object):
 		return State(self._phi[state])
 
 	def make_cluster(self, list_of_ground_states):
-
+		if len(list_of_ground_states) == 0:
+			return
+		
 		abstract_value = 0
 		if len(self._phi.values()) != 0:
 			abstract_value = max(self._phi.values()) + 1
