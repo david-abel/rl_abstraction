@@ -1,0 +1,320 @@
+# Python imports.
+from collections import defaultdict
+import Queue
+import random as r
+
+# Other imports.
+from ActionAbstractionClass import ActionAbstraction
+from OptionClass import Option
+from simple_rl.utils.ValueIterationClass import ValueIteration
+from simple_rl.mdp.MDPClass import MDP
+from EqPredicateClass import EqPredicate
+
+def get_directed_options_for_sa(mdp, state_abstr):
+    '''
+    Args:
+        mdp (MDP)
+        state_abstr (StateAbstraction)
+
+    Returns:
+        (ActionAbstraction)
+    '''
+    
+    abs_states = state_abstr.get_abs_states()
+    g_start_state = mdp.get_init_state()
+
+    # Compute all directed options that transition between abstract states.
+    option_state_pair_dict = defaultdict(list)
+    random_policy = lambda s : r.choice(mdp.actions)
+    for s_a in abs_states:
+        for s_a_prime in abs_states:
+            if not(s_a == s_a_prime):
+                init_predicate = EqPredicate(y=s_a, func=state_abstr.phi)
+                term_predicate = EqPredicate(y=s_a_prime, func=state_abstr.phi)
+                o = Option(init_func=init_predicate.is_true, #lambda s : state_abstr.phi(s) == s_a,
+                            term_func=term_predicate.is_true, #lambda s : state_abstr.phi(s) == s_a_prime,
+                            policy = random_policy)
+                option_state_pair_dict[o] = (s_a, s_a_prime)
+
+    return _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp)
+
+def _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp):
+    '''
+    Args:
+        option_state_pair_dict (dict):
+            Key: option
+            Val: (init_abs_state, terminal_abs_state)
+        state_abstr (StateAbstraction)
+        mdp (MDP)
+
+    Returns:
+        (list of Options)
+
+    Summary:
+        Removes redundant options. That is, if o_1 goes from s_A1 to s_A2, and
+        o_2 goes from s_A1 *through s_A2 to s_A3, then we get rid of o_2.
+    '''
+
+    # Solve for directected policies.
+    all_options = list(option_state_pair_dict.keys())
+
+    good_options = []
+
+    for o in all_options:
+        pre_abs_state, post_abs_state = option_state_pair_dict[o]
+
+        ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
+        ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
+
+        def _directed_option_reward_lambda(s, a):
+            s_prime = mdp.get_transition_func()(s,a)
+            return int(s_prime in ground_term_states and not s in ground_term_states)
+
+        def new_trans_func(s, a):
+            flipped_flag = False
+            if s in ground_term_states:
+                flipped_flag = True
+                s.set_terminal()
+            s_prime = mdp.get_transition_func()(s,a)
+            s.set_terminal(flipped_flag)
+            return s_prime
+
+        init_g_state = r.choice(ground_init_states)
+        mini_mdp = MDP(actions=mdp.actions,
+                        init_state=init_g_state,
+                        transition_func=new_trans_func,
+                        reward_func=_directed_option_reward_lambda)
+
+        # Solve the MDP defined by the terminal abstract state.
+        mini_mdp_vi = ValueIteration(mini_mdp, delta=0.0001, max_iterations=5000)
+        mini_mdp_vi.run_vi()
+        o_policy = mini_mdp_vi.policy
+
+        # print "From", ground_init_states[0].y,
+        # print "to", ground_term_states[0].y
+        # for s in ground_init_states:
+        #     print s, o_policy(s)
+        # print
+        # print
+        plan, state_seq = mini_mdp_vi.plan(init_g_state)
+
+
+        option_state_pair_dict.pop(o)
+        if not _check_overlap(o, state_seq, option_state_pair_dict.keys()):
+            # Give the option the new directed policy.
+            o.set_policy(o_policy)
+            good_options.append(o)
+            option_state_pair_dict[o] = pre_abs_state, post_abs_state
+
+    # print "\n\n-----------------------------\n\n"
+
+    # for o in good_options:
+    #     pre_abs_state, post_abs_state = option_state_pair_dict[o]
+
+    #     ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
+    #     ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
+
+    #     print "From", ground_init_states[0].y,
+    #     print "to", ground_term_states[0].y
+    #     for s in ground_init_states:
+    #         print s, o.policy(s)
+    #     print
+    #     print
+    #     plan, state_seq = mini_mdp_vi.plan(init_g_state)
+
+    # print len(good_options)
+
+    # quit()
+
+    return good_options
+
+def _check_overlap(option, state_seq, options):
+    '''
+    Args:
+        state_seq (list of State)
+        options
+
+    Returns:
+        (bool): If true, we should remove this option.
+    '''
+    for i, s_g in enumerate(state_seq):
+        for o_prime in options:
+            is_in_middle = not option.term_func(s_g) and not option.init_func(s_g)
+            if is_in_middle and o_prime.init_func(s_g):
+                # We should get rid of @option, because it's path goes through another init.
+                return True
+
+    return False
+
+def compute_sub_opt_func_for_mdp_distr(mdp_distr):
+    '''
+    Args:
+        mdp_distr (dict)
+
+    Returns:
+        (list): Contains the suboptimality function for each MDP in mdp_distr.
+            subopt: V^*(s) - Q^(s,a)
+    '''
+    actions = mdp_distr.keys()[0].get_actions()
+    sub_opt_funcs = []
+
+    i = 0
+    for mdp in mdp_distr.keys():
+        print "\t mdp", i + 1, "of", len(mdp_distr.keys())
+        vi = ValueIteration(mdp, delta=0.001, max_iterations=1000)
+        iters, value = vi.run_vi()
+
+        new_sub_opt_func = defaultdict(float)
+        for s in vi.get_states():
+            max_q = float("-inf")
+            for a in actions:
+                next_q = vi.get_q_value(s, a)
+                if next_q > max_q:
+                    max_q = next_q
+
+            for a in actions:
+                new_sub_opt_func[(s, a)] = max_q - vi.get_q_value(s,a)
+
+        sub_opt_funcs.append(new_sub_opt_func)
+        i+=1
+
+    return sub_opt_funcs
+
+def _compute_agreement(sub_opt_funcs, mdp_distr, state, action, epsilon=0.00):
+    '''
+    Args:
+        sub_opt_funcs (list of dicts)
+        mdp_distr (dict)
+        state (simple_rl.State)
+        action (str)
+        epsilon (float)
+
+    Returns:
+        (list)
+
+    Summary:
+        Computes the MDPs for which @action is epsilon-optimal in @state.
+    '''
+    all_sub_opt_vals = [sof[(state, action)] for sof in sub_opt_funcs]
+    eps_opt_mdps = [int(sov <= epsilon) for sov in all_sub_opt_vals]
+
+    return eps_opt_mdps
+
+def add_next_option(mdp_distr, next_decis_state, sub_opt_funcs):
+    '''
+    Args:
+
+    Returns:
+        (Option)
+    '''
+
+    # Init func and terminal func.
+    init_func = lambda s : s == next_decis_state
+    term_func = lambda s : True
+    term_func_states = []
+
+    # Misc. 
+    reachable_states = Queue.Queue()
+    reachable_states.put(next_decis_state)
+    visited_states = set([next_decis_state])
+    policy_dict = defaultdict(str)
+    actions = mdp_distr.keys()[0].get_actions()
+    transition_func = mdp_distr.keys()[0].get_transition_func()
+
+    # Tracks which MDPs share near-optimal action sequences.
+    mdps_active = [1 for m in range(len(sub_opt_funcs))]
+
+    while not reachable_states.empty():
+        # Pointers for this iteration.
+        cur_state = reachable_states.get()
+        next_action = r.choice(actions)
+        max_agreement = 0 # agreement for this state.
+
+        # Compute action with max agreement (num active MDPs with shared eps-opt action.)
+        for a in actions:
+            agreement_ls = _compute_agreement(sub_opt_funcs, mdp_distr, cur_state, a)
+            active_agreement_ls = [mdps_active[i] & agreement_ls[i] for i in range(len(agreement_ls))]
+            agreement = sum(active_agreement_ls)
+            if agreement > max_agreement:
+                next_action = a
+                max_agreement = agreement
+
+        # Set policy for this state to the action with maximal agreement.
+        policy_dict[cur_state] = next_action
+        max_agreement_ls = _compute_agreement(sub_opt_funcs, mdp_distr, cur_state, next_action)
+        mdps_active = [mdps_active[i] & max_agreement_ls[i] for i in range(len(max_agreement_ls))]
+        agreement = sum(mdps_active)
+
+        # Move to the next state according to max agreement action.
+        next_state = transition_func(cur_state, next_action)
+
+        if agreement <= 2 or next_state.is_terminal():
+            term_func_states.append(next_state)
+
+        if next_state not in visited_states:
+            reachable_states.put(next_state)
+            visited_states.add(next_state)
+
+    if len(term_func_states):
+        term_func_states.append(next_state)
+
+    # Turn policy dict into a function and make the option.
+    o = Option(init_func, term_func=term_func_states, policy=policy_dict)
+
+    return o
+
+
+def make_greedy_options(mdp_distr):
+    '''
+    Assumptions:
+        Shared S, A, start state, T, gamma between all M in mdp_distr.
+    '''
+
+    if isinstance(mdp_distr, MDP):
+        print "Warning: attempting to create options for a single MDP."
+        mdp_distr = {1.0:mdp_distr}
+
+    # Grab relevant MDP distr. components.
+    init_state = mdp_distr.keys()[0].get_init_state()
+    transition_func = mdp_distr.keys()[0].get_transition_func()
+    actions = mdp_distr.keys()[0].get_actions()
+
+    # Setup data structures.
+    print "Computing advantage functions."
+    sub_opt_funcs = compute_sub_opt_func_for_mdp_distr(mdp_distr)
+    decision_states = Queue.Queue()
+    decision_states.put(init_state)
+    new_aa = ActionAbstraction(options=actions)
+
+    visited_states = set([init_state])
+    # Loop over reachable states.
+    num_options = 0
+    print "Learning:"
+    while num_options < 2 and (not decision_states.empty()):
+        print "\toption", num_options + 1
+        # Add option as long as we have a decision state.
+        # A decision state is a state where we don't have a good option.
+        
+        next_decis_state = decision_states.get()
+        o = add_next_option(mdp_distr, next_decis_state, sub_opt_funcs)
+        new_aa.add_option(o)
+        num_options += 1
+        new_state = o.act_until_terminal(next_decis_state, transition_func)
+        if new_state not in visited_states:
+            decision_states.put(new_state)
+            visited_states.add(new_state)
+
+    return new_aa
+
+
+def load_aa(file_name):
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    if os.path.isfile(this_dir + "/cached_aa/" + file_name):
+        return cPickle.load( open( this_dir + "/cached_aa/" + file_name, "rb" ))
+    else:
+        print "Warning: no saved Action Abstraction found with name '" + file_name + "'."
+        
+def save_aa(aa, file_name):
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    cPickle.dump(aa, open( this_dir + "/cached_aa/" + file_name, "w" ))
+

@@ -1,53 +1,44 @@
 # Python imports.
 from collections import defaultdict
+import copy
 
 # Other imports.
 from simple_rl.agents.AgentClass import Agent
-from StateAbstractionClass import StateAbstraction
-
-# ------------ Indicator Functions ------------
-
-def agent_q_estimate_equal(state_x, state_y, agent, epsilon=0.0):
-    '''
-    Args:
-        state_x (State)
-        state_y (State)
-        agent (Agent)
-
-    Returns:
-        (bool): true iff:
-            max |agent.Q(state_x,a) - agent.Q(state_y, a)| <= epsilon
-    '''
-    for a in agent.actions:
-        q_x = agent.get_q_value(state_x, a)
-        q_y = agent.get_q_value(state_y, a)
-
-        if abs(q_x - q_y) > epsilon:
-            return False
-
-    return True
-
-def agent_always_false(state_x, state_y, agent):
-    return False
-
-# ----------------------------------------------
+from state_abs.StateAbstractionClass import StateAbstraction
+from action_abs.ActionAbstractionClass import ActionAbstraction
 
 class AbstractionWrapper(Agent):
 
-    def __init__(self, agent, indicator_func=agent_q_estimate_equal, state_abs=StateAbstraction()):
+    def __init__(self,
+                    SubAgentClass,
+                    actions,
+                    state_abs=StateAbstraction(),
+                    action_abs=None,
+                    learn=False):
         '''
         Args:
-            agent (Agent)
-            indicator_func (func: State x State x Agent --> {0,1})
-            state_abs (func: State --> State)
+            SubAgentClass (Class)
+            actions (list of str)
+            state_abs (StateAbstraction)
+            state_abs (ActionAbstraction)
+            learn (bool)
         '''
-        Agent.__init__(self, name=agent.name + "-sa", actions=agent.actions, gamma=agent.gamma)
-        self.agent = agent
+        # Setup the abstracted agent.
+        self.action_abs = self._create_action_abs(actions, action_abs)
         self.state_abs = state_abs
-        self.update_every_n_steps = 10
-        self.steps_since_update = 0
-        self.observed_states = set()
-        self.indicator_func = indicator_func
+        self.agent = SubAgentClass(actions=self.action_abs.get_actions())
+        Agent.__init__(self, name=self.agent.name + "-abstr", actions=self.action_abs.get_actions())
+
+    def _create_action_abs(self, actions, action_abs):
+        '''
+        Summary:
+            We here create the default action abstraction since it requires
+            access to the agent's actions.
+        '''
+        if action_abs is None:
+            return ActionAbstraction(options=agent.actions)
+        else:
+            return action_abs
 
     def act(self, ground_state, reward):
         '''
@@ -58,21 +49,68 @@ class AbstractionWrapper(Agent):
         Return:
             (str)
         '''
-        self.observed_states.add(ground_state)
-
         abstr_state = self.state_abs.phi(ground_state)
+        
+        ground_action = self.action_abs.act(self.agent, abstr_state, ground_state, reward)
 
-        action = self.agent.act(abstr_state, reward)
+        return ground_action
 
+    def reset(self):
+        self.agent.reset()
+
+    def new_task(self):
+        self.agent._reset_reward()
+
+    def get_num_known_sa(self):
+        return self.agent.get_num_known_sa()
+
+    def _reset_reward(self):
+        self.agent._reset_reward()
+
+    def end_of_episode(self):
+        self.agent.end_of_episode()
+
+    def make_abstract_mdp(self, mdp):
+        '''
+        Args:
+            mdp (MDP)
+
+        Returns:
+            mdp (MDP): The abstracted MDP via self.phi.
+        '''
+
+        # DOESN't WORK BECAUSE OF OPTIONS. Fix.
+        prim_actions = mdp.get_actions()
+        ground_t, ground_r = mdp.get_transition_func(), mdp.get_reward_func()
+
+        abstr_actions = self.action_abs.get_actions()
+        abstr_init_state = self.state_abs.phi(mdp.get_init_state())
+        abstr_trans_func = lambda s, a: self.phi(ground_t(s, a))
+        abstr_reward_func = lambda s, a: ground_r(s, a)
+        abstr_gamma = mdp.get_gamma()
+
+        abstr_mdp = MDP(actions=abstr_actions,
+                        transition_func=abstr_trans_func,
+                        reward_func=abstr_reward_func,
+                        init_state=abstr_init_state,
+                        gamma=abstr_gamma)
+
+        return abstr_mdp
+
+    # --- Experimental/In progress Code ---
+
+    def _learning_step(self):
+        '''
+        Summary:
+            Performs a learning step for sa/aa.
+        '''
+        num_known = self.agent.get_num_known_sa()
         # Update SA.
-        self.steps_since_update += 1
-        if self.steps_since_update >= self.update_every_n_steps:
-            self.update_sa()
-            self.steps_since_update = 0
+        if num_known - self.prev_update_known_val >= self.update_every_n_known:
+            self._update_sa()
+            self.prev_update_known_val = num_known
 
-        return action
-
-    def update_sa(self):
+    def _update_sa(self):
         '''
         Summary:
             Must assume that @self.agent can give an accurate T, R, and Q after some number of steps.
@@ -83,14 +121,15 @@ class AbstractionWrapper(Agent):
             # Find state pairs that satisfy the condition.
             clusters[state_x] = [state_x]
             for state_y in self.observed_states:
-                if state_x != state_y and self.indicator_func(state_x, state_y, self.agent):
+                if state_x != state_y and self.indicator_func(state_x, state_y, self.agent, self.state_abs.phi):
                     clusters[state_x].append(state_y)
                     clusters[state_y].append(state_x)
 
         for state in clusters.keys():
             new_cluster = clusters[state]
-            self.state_abs.make_cluster(new_cluster)
+            if len(new_cluster) > 1:
+                self.state_abs.make_cluster(new_cluster)
 
-            # Destroy old so we don't double up.
-            for s_prime in clusters[state]:
-                clusters[s_prime] = []
+                # Destroy old so we don't double up.
+                for s_prime in clusters[state]:
+                    clusters[s_prime] = []
