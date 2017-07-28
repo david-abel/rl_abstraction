@@ -14,7 +14,8 @@ class AbstractionWrapper(Agent):
                     actions,
                     state_abs=None,
                     action_abs=None,
-                    learn=False):
+                    learn=False,
+                    name_ext="abstr"):
         '''
         Args:
             SubAgentClass (Class)
@@ -26,7 +27,7 @@ class AbstractionWrapper(Agent):
         # Setup the abstracted agent.
         self._create_default_abstractions(actions, state_abs, action_abs)
         self.agent = SubAgentClass(actions=self.action_abs.get_actions())
-        Agent.__init__(self, name=self.agent.name + "-abstr", actions=self.action_abs.get_actions())
+        Agent.__init__(self, name=self.agent.name + "-" + name_ext, actions=self.action_abs.get_actions())
 
     def _create_default_abstractions(self, actions, state_abs, action_abs):
         '''
@@ -34,7 +35,7 @@ class AbstractionWrapper(Agent):
             We here create the default abstractions.
         '''
         if action_abs is None:
-            self.action_abs = ActionAbstraction(options=agent.actions)
+            self.action_abs = ActionAbstraction(options=agent.actions, prim_actions=agent.actions)
         else:
             self.action_abs = action_abs
 

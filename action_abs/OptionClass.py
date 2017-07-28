@@ -17,11 +17,6 @@ class Option(object):
 		self.term_flag = False
 		self.name = name
 
-		# Special types.
-		# if type(term_predicate) is list:
-		# 	self.term_list = term_func
-		# 	self.term_predicate = self.term_func_from_list
-
 		if type(policy) is defaultdict:
 			self.policy_dict = dict(policy)
 			self.policy = self.policy_from_dict

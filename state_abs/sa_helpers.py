@@ -2,6 +2,7 @@
 from collections import defaultdict
 import cPickle
 import os
+import sys
 
 # Other imports.
 from simple_rl.utils.ValueIterationClass import ValueIteration
@@ -72,7 +73,6 @@ def compute_planned_state_abs(mdp_class="grid", num_mdps=30):
     avged_mdp = GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=goal_locs)
     visualize_mdp(avged_mdp, merged_sa.phi, file_name="abstr-mdp.png")
 
-
 def make_and_save_sa(mdp, state_class=State, epsilon=0.0):
     '''
     Args:
@@ -83,7 +83,7 @@ def make_and_save_sa(mdp, state_class=State, epsilon=0.0):
     Summary:
         Creates and saves a state abstraction.
     '''
-    print "Making and saving Q equivalence state abstraction... "
+    print "  Making and saving Q equivalence state abstraction... "
     q_equiv_sa = StateAbstraction()
     mdp_name = str(mdp)
     if not type(mdp) is dict:
@@ -125,16 +125,17 @@ def make_sa(mdp, indicator_func, state_class, epsilon=0.0):
     '''
 
     print "\tRunning VI...",
+    sys.stdout.flush()
     # Run VI
     vi = ValueIteration(mdp, delta=0.0001, max_iterations=5000)
     iters, val = vi.run_vi()
     print " done."
-    sa = StateAbstraction(state_class=state_class)
-    clusters = defaultdict(list)
-
-    num_states = len(vi.get_states())
 
     print "\tMaking state abstraction...",
+    sys.stdout.flush()
+    sa = StateAbstraction(state_class=state_class)
+    clusters = defaultdict(list)
+    num_states = len(vi.get_states())
     # Find state pairs that satisfy the condition.
     for i, state_x in enumerate(vi.get_states()):
         clusters[state_x] = [state_x]

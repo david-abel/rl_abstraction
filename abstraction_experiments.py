@@ -64,12 +64,9 @@ def get_aa(mdp_distr, actions, default=False):
     '''
     
     if default:
-        return ActionAbstraction(options=actions)
-    # Test.
-    new_aa = action_abs.aa_helpers.make_greedy_options(mdp_distr)
+        return ActionAbstraction(options=actions, prim_actions=actions)
 
-    # Default.
-    return new_aa
+    return action_abs.aa_helpers.make_greedy_options(mdp_distr)
 
 def get_directed_aa(mdp_distr, state_abs):
     '''
@@ -89,7 +86,7 @@ def get_directed_aa(mdp_distr, state_abs):
     if not directed_options:
         return False
 
-    return ActionAbstraction(options=directed_options)
+    return ActionAbstraction(options=directed_options, prim_actions=first_mdp.get_actions())
 
 def compare_planning_abstr(mdp, abstr_mdp):
     '''
@@ -109,7 +106,66 @@ def compare_planning_abstr(mdp, abstr_mdp):
 
     return iters, abstr_iters
 
+def get_directed_option_sa_pair(mdp):
+    '''
+    Args:
+        mdp (MDP)
+        make_new_abs (bool)
+
+    Returns:
+        (StateAbstraction, ActionAbstraction)
+    '''
+
+     # Get Abstractions by iterating over epsilons.
+    found_small_option_set = False
+    sa_epsilon, sa_eps_incr = 0.0, 0.01
+    while True:
+        print "Epsilon:", sa_epsilon
+
+        # Compute the SA-AA pair.
+        sa = get_sa(mdp, make_new_sa=True, default=False, epsilon=sa_epsilon)
+
+        if sa.get_num_abstr_states() == 1:
+            # We can't have only 1 abstract state.
+            print "Error: only 1 abstract state."
+            quit()
+
+        aa = get_directed_aa(mdp, sa)
+        if aa:
+            # If this is a good aa, we're done.
+            break
+
+        sa_epsilon += sa_eps_incr
+
+    print "\nFound", len(aa.get_actions()), "Options."
+
+    return sa, aa
+
+
+def get_abstractions(mdp, directed=True):
+    '''
+    Args:
+
+    Returns:
+        (StateAbstraction, ActionAbstraction)
+    '''
+    if directed:
+        return get_directed_option_sa_pair(mdp)
+    else:
+        sa = get_sa(mdp)
+        aa = get_aa(mdp)
+        return sa, aa
+
 def write_datum_to_file(exp_dir, datum, file_name):
+    '''
+    Args:
+        exp_dir (str)
+        datum (object)
+        file_name (str)
+
+    Summary:
+        Writes @datum to the file stored in join(exp_dir, file_name).
+    '''
     if not os.path.isdir("results/" + exp_dir + "/"):
         os.makedirs("results/" + exp_dir)
     out_file = open("results/" + exp_dir + "/" + file_name + ".csv", "a+")
@@ -121,7 +177,7 @@ def main():
 
     # MDP Setting.
     multi_task = False
-    mdp_class = "four_room"
+    mdp_class = "taxi"
 
     # Single Task.
     mdp = make_mdp.make_mdp(mdp_class=mdp_class)
@@ -134,23 +190,9 @@ def main():
         actions = mdp_distr.keys()[0].actions
         gamma = mdp_distr.keys()[0].gamma
 
-    # Get Abstractions.
-    found_small_option_set = False
-    sa_epsilon, sa_eps_incr = 0.0, 0.01
-    while True:
-        print "\tEpsilon:", sa_epsilon
-        sa = get_sa(mdp, make_new_sa=True, default=False, epsilon=sa_epsilon)
-        aa = get_directed_aa(mdp, sa)
-
-        if aa:
-            break
-
-        if not aa:
-            sa_epsilon += sa_eps_incr
-
-    # aa = get_aa(mdp_distr, actions, default=True)
-
-    print "Found", len(aa.get_actions()), "Options."
+    # Grab SA and AA for each abstraction agent.   
+    directed_sa, directed_aa = get_abstractions(mdp, directed=True)
+    regular_sa, regular_aa = directed_sa, get_aa(mdp, mdp.get_actions(), default=True)
 
     # Make Agents.
     rand_agent = RandomAgent(actions)
@@ -158,17 +200,18 @@ def main():
     ql_agent = QLearnerAgent(actions, gamma=gamma)
 
     # Make Abstraction Agents.
-    abstr_random_agent = AbstractionWrapper(RandomAgent, actions, state_abs=sa, action_abs=aa)
-    abs_rmax_agent = AbstractionWrapper(RMaxAgent, actions, state_abs=sa, action_abs=aa)
-    abs_ql_agent = AbstractionWrapper(QLearnerAgent, actions, state_abs=sa, action_abs=aa)
+    # abstr_random_agent = AbstractionWrapper(RandomAgent, actions, state_abs=sa, action_abs=aa)
+    # abs_rmax_agent = AbstractionWrapper(RMaxAgent, actions, state_abs=sa, action_abs=aa)
+    abs_ql_agent_directed = AbstractionWrapper(QLearnerAgent, actions, state_abs=directed_sa, action_abs=directed_aa, name_ext="sa+aa")
+    abs_ql_agent = AbstractionWrapper(QLearnerAgent, actions, state_abs=directed_sa, action_abs=regular_aa, name_ext="sa")
     
-    agents = [abs_ql_agent, ql_agent, abs_rmax_agent, rmax_agent]
+    agents = [abs_ql_agent_directed, abs_ql_agent, ql_agent]
 
     # Run experiments.
     if multi_task:
         run_agents_multi_task(agents, mdp_distr, instances=200, num_switches=1, steps=250, clear_old_results=False)
     else:
-        run_agents_on_mdp(agents, mdp, instances=3, episodes=100, steps=20, clear_old_results=True)
+        run_agents_on_mdp(agents, mdp, instances=5, episodes=250, steps=50, clear_old_results=True)
 
 
 if __name__ == "__main__":

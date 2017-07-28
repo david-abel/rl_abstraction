@@ -2,6 +2,9 @@
 from collections import defaultdict
 import Queue
 import random as r
+import os
+import sys
+import cPickle
 
 # Other imports.
 from ActionAbstractionClass import ActionAbstraction
@@ -21,17 +24,15 @@ def get_directed_options_for_sa(mdp, state_abstr, opt_size_limit=100):
         (ActionAbstraction)
     '''
 
-    print "Computing directed options."
+    print "  Computing directed options."
+    sys.stdout.flush()
     
     abs_states = state_abstr.get_abs_states()
     g_start_state = mdp.get_init_state()
 
     # Compute all directed options that transition between abstract states.
-    # option_state_pair_dict = defaultdict(list)
-
     options = []
     state_pairs = []
-
     random_policy = lambda s : r.choice(mdp.actions)
     for s_a in abs_states:
         for s_a_prime in abs_states:
@@ -46,14 +47,13 @@ def get_directed_options_for_sa(mdp, state_abstr, opt_size_limit=100):
                 state_pairs.append((s_a, s_a_prime))
 
     if len(options) > 100:
-        print "\tToo many options. Increasing epsilon and continuing."
+        print "\tToo many options. Increasing epsilon and continuing.\n"
         return False
 
     print "\tMade", len(options), "options (formed clique over S_A)."
 
-
-
     print "\tPruning...",
+    sys.stdout.flush()
 
     pruned_option_set = _prune_non_directed_options(options, state_pairs, state_abstr, mdp)
 
@@ -104,48 +104,16 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp):
         mini_mdp_vi = ValueIteration(mini_mdp, delta=0.0001, max_iterations=5000)
         mini_mdp_vi.run_vi()
         o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, state_abstr.get_ground_states())
-
         o_policy = PolicyFromDict(o_policy_dict)
 
-
+        # Prune overlapping ones.
         plan, state_seq = mini_mdp_vi.plan(init_g_state)
-
         if not _check_overlap(o, state_seq, options):
             # Give the option the new directed policy and name.
             o.set_policy(o_policy.get_action)
-
-            # NOTE: not making a copy of the policy lambdas, they're all the same.
-
-            # Debug to test policy.
-            opt_name = str(ground_init_states[0].y) + "-" + str(ground_term_states[0].y)
+            opt_name = str(ground_init_states[0]) + "-" + str(ground_term_states[0])
             o.set_name(opt_name)
             good_options.append(o)
-
-
-    # Storing same policy everywhere.
-    # for o in good_options:
-    #     print o.name
-    #     for s in state_abstr.get_ground_states():
-    #         if s.y != 4 and not o.is_term_true(s):
-    #         # if o.is_init_true(s):
-    #             print "\t", s, o.policy(s)
-    #     print
-    #     print
-
-
-    # for i, o in enumerate(good_options):
-    #     pre_abs_state, post_abs_state = good_state_pairs[i][0], good_state_pairs[i][1]
-    #     ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
-    #     ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
-    #     o.name = str(ground_init_states[0].y) + "-" + str(ground_term_states[0].y)
-
-    #     print o.name
-    #     for s in ground_init_states:
-    #         print s, o.policy(s)
-    #     print
-    #     print
-
-    # print len(good_options)
 
     return good_options
 
@@ -313,7 +281,7 @@ def make_greedy_options(mdp_distr):
     sub_opt_funcs = compute_sub_opt_func_for_mdp_distr(mdp_distr)
     decision_states = Queue.Queue()
     decision_states.put(init_state)
-    new_aa = ActionAbstraction(options=actions)
+    new_aa = ActionAbstraction(options=actions, prim_actions=actions)
 
     visited_states = set([init_state])
     # Loop over reachable states.

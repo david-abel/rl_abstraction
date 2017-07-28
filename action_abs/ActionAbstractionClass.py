@@ -3,13 +3,15 @@ from collections import defaultdict
 
 # Other imports.
 from OptionClass import Option
+from PredicateClass import Predicate
 
 class ActionAbstraction(object):
 
-    def __init__(self, options=[]):
+    def __init__(self, options, prim_actions):
         self.options = self._convert_to_options(options)
         self.is_cur_executing = False
         self.cur_option = None # The option we're executing currently.
+        self.prim_actions = prim_actions
 
     def act(self, agent, abstr_state, ground_state, reward):
         '''
@@ -22,17 +24,18 @@ class ActionAbstraction(object):
         if self.is_next_step_continuing_option(ground_state):
             # We're in an option and not terminating.
             a = self.get_next_ground_action(ground_state)
-            # print "continue", self.cur_option.name, ground_state, a
             return a
         else:
             # We're not in an option, check with agent.
             active_options = self._get_active_options(ground_state)
-            # print "Active options in", ground_state, 
-            # for o in active_options:
-            #     print o,
-            # print
-            # print
-            agent.actions = active_options
+
+            if len(active_options) == 0:
+                # No actions available.
+                agent.actions = self.prim_actions
+            else:
+                # Give agent available options.
+                agent.actions = active_options
+            
             abstr_action = agent.act(abstr_state, reward)
 
             self.set_option_executing(abstr_action)
@@ -64,8 +67,8 @@ class ActionAbstraction(object):
         for ground_action in action_list:
             o = ground_action
             if type(ground_action) is str:
-                o = Option(init_func=make_lambda(True),
-                            term_func=make_lambda(True),
+                o = Option(init_predicate=Predicate(make_lambda(True)),
+                            term_predicate=Predicate(make_lambda(True)),
                             policy=make_lambda(ground_action))
             options.append(o)
         return options
@@ -75,12 +78,10 @@ class ActionAbstraction(object):
         Returns:
             (bool): True iff an option was executing and should continue next step.
         '''
-        # if self.cur_option:
-        #     print self.cur_option.name, self.cur_option.is_term_true(ground_state), ground_state
         return self.is_cur_executing and not self.cur_option.is_term_true(ground_state)
 
     def set_option_executing(self, option):
-        if option not in self.options:
+        if option not in (self.options + self.prim_actions):
             print "Error: agent chose a non-existent option (" + option + ")."
             quit()
 
