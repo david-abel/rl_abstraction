@@ -9,8 +9,9 @@ from OptionClass import Option
 from simple_rl.utils.ValueIterationClass import ValueIteration
 from simple_rl.mdp.MDPClass import MDP
 from EqPredicateClass import EqPredicate
+from PolicyFromDictClass import *
 
-def get_directed_options_for_sa(mdp, state_abstr):
+def get_directed_options_for_sa(mdp, state_abstr, opt_size_limit=100):
     '''
     Args:
         mdp (MDP)
@@ -19,31 +20,52 @@ def get_directed_options_for_sa(mdp, state_abstr):
     Returns:
         (ActionAbstraction)
     '''
+
+    print "Computing directed options."
     
     abs_states = state_abstr.get_abs_states()
     g_start_state = mdp.get_init_state()
 
     # Compute all directed options that transition between abstract states.
-    option_state_pair_dict = defaultdict(list)
+    # option_state_pair_dict = defaultdict(list)
+
+    options = []
+    state_pairs = []
+
     random_policy = lambda s : r.choice(mdp.actions)
     for s_a in abs_states:
         for s_a_prime in abs_states:
             if not(s_a == s_a_prime):
                 init_predicate = EqPredicate(y=s_a, func=state_abstr.phi)
                 term_predicate = EqPredicate(y=s_a_prime, func=state_abstr.phi)
-                o = Option(init_func=init_predicate.is_true, #lambda s : state_abstr.phi(s) == s_a,
-                            term_func=term_predicate.is_true, #lambda s : state_abstr.phi(s) == s_a_prime,
+                o = Option(init_predicate=init_predicate, #lambda s : state_abstr.phi(s) == s_a,
+                            term_predicate=term_predicate, #lambda s : state_abstr.phi(s) == s_a_prime,
                             policy = random_policy)
-                option_state_pair_dict[o] = (s_a, s_a_prime)
 
-    return _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp)
+                options.append(o)
+                state_pairs.append((s_a, s_a_prime))
 
-def _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp):
+    if len(options) > 100:
+        print "\tToo many options. Increasing epsilon and continuing."
+        return False
+
+    print "\tMade", len(options), "options (formed clique over S_A)."
+
+
+
+    print "\tPruning...",
+
+    pruned_option_set = _prune_non_directed_options(options, state_pairs, state_abstr, mdp)
+
+    print "done. Reduced to", len(pruned_option_set), "options."
+
+    return pruned_option_set
+
+def _prune_non_directed_options(options, state_pairs, state_abstr, mdp):
     '''
     Args:
-        option_state_pair_dict (dict):
-            Key: option
-            Val: (init_abs_state, terminal_abs_state)
+        Options(list)
+        state_pairs (list)
         state_abstr (StateAbstraction)
         mdp (MDP)
 
@@ -55,13 +77,10 @@ def _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp):
         o_2 goes from s_A1 *through s_A2 to s_A3, then we get rid of o_2.
     '''
 
-    # Solve for directected policies.
-    all_options = list(option_state_pair_dict.keys())
-
     good_options = []
 
-    for o in all_options:
-        pre_abs_state, post_abs_state = option_state_pair_dict[o]
+    for i, o in enumerate(options):
+        pre_abs_state, post_abs_state = state_pairs[i]
 
         ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
         ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
@@ -71,12 +90,8 @@ def _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp):
             return int(s_prime in ground_term_states and not s in ground_term_states)
 
         def new_trans_func(s, a):
-            flipped_flag = False
-            if s in ground_term_states:
-                flipped_flag = True
-                s.set_terminal()
+            s.set_terminal(s in ground_term_states)
             s_prime = mdp.get_transition_func()(s,a)
-            s.set_terminal(flipped_flag)
             return s_prime
 
         init_g_state = r.choice(ground_init_states)
@@ -88,43 +103,49 @@ def _prune_non_directed_options(option_state_pair_dict, state_abstr, mdp):
         # Solve the MDP defined by the terminal abstract state.
         mini_mdp_vi = ValueIteration(mini_mdp, delta=0.0001, max_iterations=5000)
         mini_mdp_vi.run_vi()
-        o_policy = mini_mdp_vi.policy
+        o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, state_abstr.get_ground_states())
 
-        # print "From", ground_init_states[0].y,
-        # print "to", ground_term_states[0].y
-        # for s in ground_init_states:
-        #     print s, o_policy(s)
-        # print
-        # print
+        o_policy = PolicyFromDict(o_policy_dict)
+
+
         plan, state_seq = mini_mdp_vi.plan(init_g_state)
 
+        if not _check_overlap(o, state_seq, options):
+            # Give the option the new directed policy and name.
+            o.set_policy(o_policy.get_action)
 
-        option_state_pair_dict.pop(o)
-        if not _check_overlap(o, state_seq, option_state_pair_dict.keys()):
-            # Give the option the new directed policy.
-            o.set_policy(o_policy)
+            # NOTE: not making a copy of the policy lambdas, they're all the same.
+
+            # Debug to test policy.
+            opt_name = str(ground_init_states[0].y) + "-" + str(ground_term_states[0].y)
+            o.set_name(opt_name)
             good_options.append(o)
-            option_state_pair_dict[o] = pre_abs_state, post_abs_state
 
-    # print "\n\n-----------------------------\n\n"
 
+    # Storing same policy everywhere.
     # for o in good_options:
-    #     pre_abs_state, post_abs_state = option_state_pair_dict[o]
+    #     print o.name
+    #     for s in state_abstr.get_ground_states():
+    #         if s.y != 4 and not o.is_term_true(s):
+    #         # if o.is_init_true(s):
+    #             print "\t", s, o.policy(s)
+    #     print
+    #     print
 
+
+    # for i, o in enumerate(good_options):
+    #     pre_abs_state, post_abs_state = good_state_pairs[i][0], good_state_pairs[i][1]
     #     ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
     #     ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
+    #     o.name = str(ground_init_states[0].y) + "-" + str(ground_term_states[0].y)
 
-    #     print "From", ground_init_states[0].y,
-    #     print "to", ground_term_states[0].y
+    #     print o.name
     #     for s in ground_init_states:
     #         print s, o.policy(s)
     #     print
     #     print
-    #     plan, state_seq = mini_mdp_vi.plan(init_g_state)
 
     # print len(good_options)
-
-    # quit()
 
     return good_options
 
@@ -137,12 +158,20 @@ def _check_overlap(option, state_seq, options):
     Returns:
         (bool): If true, we should remove this option.
     '''
+    terminal_is_reachable = False
     for i, s_g in enumerate(state_seq):
         for o_prime in options:
-            is_in_middle = not option.term_func(s_g) and not option.init_func(s_g)
-            if is_in_middle and o_prime.init_func(s_g):
+            is_in_middle = not option.is_term_true(s_g) and not option.is_init_true(s_g)
+            if is_in_middle and o_prime.is_init_true(s_g):
                 # We should get rid of @option, because it's path goes through another init.
                 return True
+            
+            # Only keep options whose terminal states are reachable from the initiation set.
+            if option.is_term_true(s_g):
+                terminal_is_reachable = True
+
+    if not terminal_is_reachable:
+        return True
 
     return False
 

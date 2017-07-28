@@ -21,12 +21,36 @@ class ActionAbstraction(object):
         '''
         if self.is_next_step_continuing_option(ground_state):
             # We're in an option and not terminating.
-            return self.get_next_ground_action(ground_state)
+            a = self.get_next_ground_action(ground_state)
+            # print "continue", self.cur_option.name, ground_state, a
+            return a
         else:
             # We're not in an option, check with agent.
+            active_options = self._get_active_options(ground_state)
+            # print "Active options in", ground_state, 
+            # for o in active_options:
+            #     print o,
+            # print
+            # print
+            agent.actions = active_options
             abstr_action = agent.act(abstr_state, reward)
+
             self.set_option_executing(abstr_action)
             return self.abs_to_ground(ground_state, abstr_action)
+
+    def _get_active_options(self, state):
+        '''
+        Args:
+            state (State)
+
+        Returns:
+            (list): Contains all active options.
+        '''
+        result = []
+        for o in self.options:
+            if o.is_init_true(state):
+                result.append(o)
+        return result
 
     def _convert_to_options(self, action_list):
         '''
@@ -51,6 +75,8 @@ class ActionAbstraction(object):
         Returns:
             (bool): True iff an option was executing and should continue next step.
         '''
+        # if self.cur_option:
+        #     print self.cur_option.name, self.cur_option.is_term_true(ground_state), ground_state
         return self.is_cur_executing and not self.cur_option.is_term_true(ground_state)
 
     def set_option_executing(self, option):
@@ -72,6 +98,14 @@ class ActionAbstraction(object):
 
     def add_option(self, option):
         self.options += [option]
+
+    def reset(self):
+        self.is_cur_executing = False
+        self.cur_option = None # The option we're executing currently.
+
+    def end_of_episode(self):
+        self.reset()
+
 
 def make_lambda(result):
     return lambda x : result

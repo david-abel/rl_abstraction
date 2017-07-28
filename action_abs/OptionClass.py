@@ -5,21 +5,22 @@ from simple_rl.mdp.StateClass import State
 
 class Option(object):
 
-	def __init__(self, init_func, term_func, policy):
+	def __init__(self, init_predicate, term_predicate, policy, name="o"):
 		'''
 		Args:
 			init_func (S --> {0,1})
 			init_func (S --> {0,1})
 			policy (S --> A)
 		'''
-		self.init_func = init_func
-		self.term_func = term_func
+		self.init_predicate = init_predicate
+		self.term_predicate = term_predicate
 		self.term_flag = False
+		self.name = name
 
 		# Special types.
-		if type(term_func) is list:
-			self.term_list = term_func
-			self.term_func = self.term_func_from_list
+		# if type(term_predicate) is list:
+		# 	self.term_list = term_func
+		# 	self.term_predicate = self.term_func_from_list
 
 		if type(policy) is defaultdict:
 			self.policy_dict = dict(policy)
@@ -28,16 +29,19 @@ class Option(object):
 			self.policy = policy
 
 	def is_init_true(self, ground_state):
-		return self.init_func(ground_state)
+		return self.init_predicate.is_true(ground_state)
 
 	def is_term_true(self, ground_state):
-		return self.term_func(ground_state) or self.term_flag
+		return self.term_predicate.is_true(ground_state) or self.term_flag
 
 	def act(self, ground_state):
 		return self.policy(ground_state)
 
 	def set_policy(self, policy):
 		self.policy = policy
+
+	def set_name(self, new_name):
+		self.name = new_name
 
 	def act_until_terminal(self, init_state, transition_func):
 		'''
@@ -61,3 +65,7 @@ class Option(object):
 
 	def term_func_from_list(self, state):
 		return state in self.term_list
+
+
+	def __str__(self):
+		return "option." + str(self.name)

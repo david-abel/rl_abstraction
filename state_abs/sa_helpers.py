@@ -73,22 +73,32 @@ def compute_planned_state_abs(mdp_class="grid", num_mdps=30):
     visualize_mdp(avged_mdp, merged_sa.phi, file_name="abstr-mdp.png")
 
 
-def make_and_save_sa(mdp, state_class=State):
+def make_and_save_sa(mdp, state_class=State, epsilon=0.0):
+    '''
+    Args:
+        mdp (MDP)
+        state_class (Class)
+        epsilon (float)
+
+    Summary:
+        Creates and saves a state abstraction.
+    '''
     print "Making and saving Q equivalence state abstraction... "
     q_equiv_sa = StateAbstraction()
     mdp_name = str(mdp)
     if not type(mdp) is dict:
-        q_equiv_sa = make_sa(mdp, _q_eps_approx_indicator, state_class=state_class)
+        q_equiv_sa = make_sa(mdp, _q_eps_approx_indicator, state_class=state_class, epsilon=epsilon)
     else:
-        q_equiv_sa = make_multitask_sa(mdp, _q_eps_approx_indicator, state_class=state_class)
+        q_equiv_sa = make_multitask_sa(mdp, _q_eps_approx_indicator, state_class=state_class, epsilon=epsilon)
         mdp_name = "multitask-" + str(mdp.keys()[0])
     save_sa(q_equiv_sa, str(mdp_name) + ".p")
 
-def make_multitask_sa(mdp_distr, indicator_func, state_class):
+def make_multitask_sa(mdp_distr, indicator_func, state_class, epsilon=0.0):
     '''
     Args:
         mdp_distr (defaultdict)
         indicator_func (S x S --> {0,1})
+        state_class (Class)
         epsilon (float)
 
     Returns:
@@ -96,17 +106,18 @@ def make_multitask_sa(mdp_distr, indicator_func, state_class):
     '''
     sa_list = []
     for mdp in mdp_distr.keys():
-        sa = make_sa(mdp, indicator_func, state_class)
+        sa = make_sa(mdp, indicator_func, state_class, epsilon)
 
         sa_list += [sa]
 
     return merge_state_abs(sa_list)
 
-def make_sa(mdp, indicator_func, state_class):
+def make_sa(mdp, indicator_func, state_class, epsilon=0.0):
     '''
     Args:
         mdp (MDP)
         indicator_func (S x S --> {0,1})
+        state_class (Class)
         epsilon (float)
 
     Returns:
@@ -128,7 +139,7 @@ def make_sa(mdp, indicator_func, state_class):
     for i, state_x in enumerate(vi.get_states()):
         clusters[state_x] = [state_x]
         for state_y in vi.get_states():
-            if not (state_x == state_y) and indicator_func(state_x, state_y, vi, mdp):
+            if not (state_x == state_y) and indicator_func(state_x, state_y, vi, mdp, epsilon=epsilon):
                 clusters[state_x].append(state_y)
                 clusters[state_y].append(state_x)
 

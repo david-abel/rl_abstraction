@@ -11,7 +11,7 @@ def make_markov_game(markov_game_class="grid_game"):
             "rps":RockPaperScissorsMDP(),
             "grid_game":GridGameMDP()}[markov_game_class]
 
-def make_mdp(mdp_class="grid", state_size=4):
+def make_mdp(mdp_class="grid", state_size=7):
     '''
     Returns:
         (MDP)

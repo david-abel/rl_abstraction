@@ -12,7 +12,7 @@ class AbstractionWrapper(Agent):
     def __init__(self,
                     SubAgentClass,
                     actions,
-                    state_abs=StateAbstraction(),
+                    state_abs=None,
                     action_abs=None,
                     learn=False):
         '''
@@ -24,21 +24,24 @@ class AbstractionWrapper(Agent):
             learn (bool)
         '''
         # Setup the abstracted agent.
-        self.action_abs = self._create_action_abs(actions, action_abs)
-        self.state_abs = state_abs
+        self._create_default_abstractions(actions, state_abs, action_abs)
         self.agent = SubAgentClass(actions=self.action_abs.get_actions())
         Agent.__init__(self, name=self.agent.name + "-abstr", actions=self.action_abs.get_actions())
 
-    def _create_action_abs(self, actions, action_abs):
+    def _create_default_abstractions(self, actions, state_abs, action_abs):
         '''
         Summary:
-            We here create the default action abstraction since it requires
-            access to the agent's actions.
+            We here create the default abstractions.
         '''
         if action_abs is None:
-            return ActionAbstraction(options=agent.actions)
+            self.action_abs = ActionAbstraction(options=agent.actions)
         else:
-            return action_abs
+            self.action_abs = action_abs
+
+        if state_abs is None:
+            self.state_abs = StateAbstraction()
+        else:
+            self.state_abs = state_abs
 
     def act(self, ground_state, reward):
         '''
@@ -57,6 +60,7 @@ class AbstractionWrapper(Agent):
 
     def reset(self):
         self.agent.reset()
+        self.action_abs.reset()
 
     def new_task(self):
         self.agent._reset_reward()
@@ -69,6 +73,7 @@ class AbstractionWrapper(Agent):
 
     def end_of_episode(self):
         self.agent.end_of_episode()
+        self.action_abs.end_of_episode()
 
     def make_abstract_mdp(self, mdp):
         '''

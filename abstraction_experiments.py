@@ -21,12 +21,13 @@ import make_mdp
 # --- Make Abstractions ---
 # -------------------------
 
-def get_sa(mdp, make_new_sa=True, default=False):
+def get_sa(mdp, make_new_sa=True, default=False, epsilon=0.0):
     '''
     Args:
         mdp (MDP)
         make_new_sa (bool)
         default (bool): If true, returns a blank StateAbstraction
+        epsilon (float): Determines approximation for clustering.
 
     Returns:
         (StateAbstraction)
@@ -39,7 +40,7 @@ def get_sa(mdp, make_new_sa=True, default=False):
     should_save_sa = False
     q_equiv_sa = StateAbstraction(state_class=State)
     if make_new_sa:
-        state_abs.sa_helpers.make_and_save_sa(mdp, state_class=State)
+        state_abs.sa_helpers.make_and_save_sa(mdp, state_class=State, epsilon=epsilon)
     else:
         mdp_name = str(mdp)
         if type(mdp) is dict:
@@ -85,9 +86,10 @@ def get_directed_aa(mdp_distr, state_abs):
         first_mdp = mdp_distr
     directed_options = action_abs.aa_helpers.get_directed_options_for_sa(first_mdp, state_abs)
 
-    aa = ActionAbstraction(options=directed_options)
+    if not directed_options:
+        return False
 
-    return aa
+    return ActionAbstraction(options=directed_options)
 
 def compare_planning_abstr(mdp, abstr_mdp):
     '''
@@ -119,7 +121,7 @@ def main():
 
     # MDP Setting.
     multi_task = False
-    mdp_class = "grid"
+    mdp_class = "four_room"
 
     # Single Task.
     mdp = make_mdp.make_mdp(mdp_class=mdp_class)
@@ -133,8 +135,19 @@ def main():
         gamma = mdp_distr.keys()[0].gamma
 
     # Get Abstractions.
-    sa = get_sa(mdp, make_new_sa=True, default=False)
-    aa = get_directed_aa(mdp, sa)
+    found_small_option_set = False
+    sa_epsilon, sa_eps_incr = 0.0, 0.01
+    while True:
+        print "\tEpsilon:", sa_epsilon
+        sa = get_sa(mdp, make_new_sa=True, default=False, epsilon=sa_epsilon)
+        aa = get_directed_aa(mdp, sa)
+
+        if aa:
+            break
+
+        if not aa:
+            sa_epsilon += sa_eps_incr
+
     # aa = get_aa(mdp_distr, actions, default=True)
 
     print "Found", len(aa.get_actions()), "Options."
@@ -149,7 +162,7 @@ def main():
     abs_rmax_agent = AbstractionWrapper(RMaxAgent, actions, state_abs=sa, action_abs=aa)
     abs_ql_agent = AbstractionWrapper(QLearnerAgent, actions, state_abs=sa, action_abs=aa)
     
-    agents = [abs_ql_agent, ql_agent]
+    agents = [abs_ql_agent, ql_agent, abs_rmax_agent, rmax_agent]
 
     # Run experiments.
     if multi_task:
