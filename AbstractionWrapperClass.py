@@ -3,7 +3,7 @@ from collections import defaultdict
 import copy
 
 # Other imports.
-from simple_rl.agents.AgentClass import Agent
+from simple_rl.agents import Agent, RMaxAgent
 from state_abs.StateAbstractionClass import StateAbstraction
 from action_abs.ActionAbstractionClass import ActionAbstraction
 
@@ -64,13 +64,14 @@ class AbstractionWrapper(Agent):
         self.action_abs.reset()
 
     def new_task(self):
-        self.agent._reset_reward()
+        self._reset_reward()
 
     def get_num_known_sa(self):
         return self.agent.get_num_known_sa()
 
     def _reset_reward(self):
-        self.agent._reset_reward()
+        if isinstance(self.agent, RMaxAgent):
+            self.agent._reset_reward()
 
     def end_of_episode(self):
         self.agent.end_of_episode()

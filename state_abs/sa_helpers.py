@@ -3,6 +3,7 @@ from collections import defaultdict
 import cPickle
 import os
 import sys
+import itertools
 
 # Other imports.
 from simple_rl.utils.ValueIterationClass import ValueIteration
@@ -24,19 +25,19 @@ def merge_state_abs(list_of_sa):
 
     return merged
 
-def _q_eps_approx_indicator(state_x, state_y, vi, mdp, epsilon=0.00):
+def _q_eps_approx_indicator(state_x, state_y, vi, actions, epsilon=0.00):
     '''
     Args:
         state_x (State)
         state_y (State)
         vi (ValueIteration)
-        mdp (MDP)
+        actions (list)
 
     Returns:
         (bool): true iff:
             max |Q(state_x,a) - Q(state_y, a)| <= epsilon
     '''
-    for a in mdp.actions:
+    for a in actions:
         q_x = vi.get_q_value(state_x, a)
         q_y = vi.get_q_value(state_y, a)
 
@@ -136,14 +137,20 @@ def make_sa(mdp, indicator_func, state_class, epsilon=0.0):
     sa = StateAbstraction(state_class=state_class)
     clusters = defaultdict(list)
     num_states = len(vi.get_states())
+    actions = mdp.get_actions()
     # Find state pairs that satisfy the condition.
     for i, state_x in enumerate(vi.get_states()):
+        # print i, 
+        sys.stdout.flush()
         clusters[state_x] = [state_x]
-        for state_y in vi.get_states():
-            if not (state_x == state_y) and indicator_func(state_x, state_y, vi, mdp, epsilon=epsilon):
+
+        for state_y in vi.get_states()[i:]:
+            if not (state_x == state_y) and indicator_func(state_x, state_y, vi, actions, epsilon=epsilon):
                 clusters[state_x].append(state_y)
                 clusters[state_y].append(state_x)
 
+    print "making clusters...",
+    sys.stdout.flush()
     # Build SA.
     for i, state in enumerate(clusters.keys()):
         new_cluster = clusters[state]

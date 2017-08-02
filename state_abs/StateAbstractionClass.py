@@ -73,6 +73,10 @@ class StateAbstraction(object):
         # For each ground state, get its abstract state.
         return set([self.phi(val) for val in set(self._phi.keys())])
 
+    def get_abs_cluster_num(self, abs_state):
+        # FIX: Specific to one abstract state class.
+        return list(set(self._phi.values())).index(abs_state.data)
+
     def get_ground_states(self):
         return self._phi.keys()
 
@@ -113,3 +117,4 @@ class StateAbstraction(object):
                     merged_state_abs[s] = states_cluster
 
         return StateAbstraction(phi=merged_state_abs)
+

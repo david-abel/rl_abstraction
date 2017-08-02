@@ -39,15 +39,15 @@ def get_directed_options_for_sa(mdp, state_abstr, opt_size_limit=100):
             if not(s_a == s_a_prime):
                 init_predicate = EqPredicate(y=s_a, func=state_abstr.phi)
                 term_predicate = EqPredicate(y=s_a_prime, func=state_abstr.phi)
-                o = Option(init_predicate=init_predicate, #lambda s : state_abstr.phi(s) == s_a,
-                            term_predicate=term_predicate, #lambda s : state_abstr.phi(s) == s_a_prime,
+                o = Option(init_predicate=init_predicate,
+                            term_predicate=term_predicate,
                             policy = random_policy)
 
                 options.append(o)
                 state_pairs.append((s_a, s_a_prime))
 
-    if len(options) > 100:
-        print "\tToo many options. Increasing epsilon and continuing.\n"
+    if len(options) > max(state_abstr.get_num_ground_states() / 3.0, 100):
+        print "\tToo many options (" + str(len(options)) + "). Increasing epsilon and continuing.\n"
         return False
 
     print "\tMade", len(options), "options (formed clique over S_A)."
@@ -90,13 +90,16 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp):
             return int(s_prime in ground_term_states and not s in ground_term_states)
 
         def new_trans_func(s, a):
+            original = s.is_terminal()
             s.set_terminal(s in ground_term_states)
             s_prime = mdp.get_transition_func()(s,a)
+            s.set_terminal(original)
             return s_prime
 
-        init_g_state = r.choice(ground_init_states)
+
+        rand_init_g_state = r.choice(ground_init_states)
         mini_mdp = MDP(actions=mdp.actions,
-                        init_state=init_g_state,
+                        init_state=rand_init_g_state,
                         transition_func=new_trans_func,
                         reward_func=_directed_option_reward_lambda)
 
@@ -106,13 +109,24 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp):
         o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, state_abstr.get_ground_states())
         o_policy = PolicyFromDict(o_policy_dict)
 
-        # Prune overlapping ones.
-        plan, state_seq = mini_mdp_vi.plan(init_g_state)
-        if not _check_overlap(o, state_seq, options):
-            # Give the option the new directed policy and name.
-            o.set_policy(o_policy.get_action)
+        # Compute overlap w.r.t. plans from each state.
+        good_option = False
+        for init_g_state in ground_init_states:
+            # Prune overlapping ones.
+            plan, state_seq = mini_mdp_vi.plan(init_g_state)
+            
             opt_name = str(ground_init_states[0]) + "-" + str(ground_term_states[0])
             o.set_name(opt_name)
+            options[i] = o
+
+            if not _check_overlap(o, state_seq, options):
+                # The option overlaps, don't include it.
+                good_option = True
+                break
+
+        if good_option:
+            # Give the option the new directed policy and name.
+            o.set_policy(o_policy.get_action)
             good_options.append(o)
 
     return good_options
@@ -127,9 +141,10 @@ def _check_overlap(option, state_seq, options):
         (bool): If true, we should remove this option.
     '''
     terminal_is_reachable = False
+
     for i, s_g in enumerate(state_seq):
         for o_prime in options:
-            is_in_middle = not option.is_term_true(s_g) and not option.is_init_true(s_g)
+            is_in_middle = (not option.is_term_true(s_g)) and (not option.is_init_true(s_g))
             if is_in_middle and o_prime.is_init_true(s_g):
                 # We should get rid of @option, because it's path goes through another init.
                 return True

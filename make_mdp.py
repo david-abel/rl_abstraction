@@ -1,6 +1,6 @@
 # Python imports.
 import itertools
-import random as r
+import random as rnd
 
 # Other imports.
 from simple_rl.tasks import ChainMDP, GridWorldMDP, TaxiOOMDP, RandomMDP, FourRoomMDP
@@ -11,31 +11,30 @@ def make_markov_game(markov_game_class="grid_game"):
             "rps":RockPaperScissorsMDP(),
             "grid_game":GridGameMDP()}[markov_game_class]
 
-def make_mdp(mdp_class="grid", state_size=3):
+def make_mdp(mdp_class="grid", state_size=7):
     '''
     Returns:
         (MDP)
     '''
-    # Grid stuff
-    goal_locs = [[state_size-1, state_size-1]]
-    width, height = 15, state_size
-    # for element in itertools.product(range(1, width + 1), [height]):
-    #     goal_locs.append(element)
+    # Grid/Hallway stuff.
+    width, height = state_size, state_size
+    hall_goal_locs = [(i,width) for i in range(1, height+1)]
 
     # Taxi stuff.
     agent = {"x":1, "y":1, "has_passenger":0}
-    passengers = [{"x":state_size-1, "y":state_size / 2, "dest_x":state_size-2, "dest_y":2, "in_taxi":0}]
+    passengers = [{"x":state_size-3, "y":state_size / 2, "dest_x":state_size-2, "dest_y":2, "in_taxi":0}]
     walls = []
 
-    mdp = {"grid":GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=[(state_size, state_size)]),
-            "four_room":FourRoomMDP(width=width, height=height, goal_locs=[(width,height),(1,height),(width,1)]),
+    mdp = {"hall":GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=hall_goal_locs),
+            "grid":GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=[(state_size, state_size)]),
+            "four_room":FourRoomMDP(width=width, height=height, goal_locs=[(width,height)]),
             "chain":ChainMDP(num_states=state_size),
             "random":RandomMDP(num_states=50, num_rand_trans=2),
-            "taxi":TaxiOOMDP(width=state_size, height=state_size, slip_prob=0.0, agent_loc=agent, walls=walls, passengers=passengers)}[mdp_class]
+            "taxi":TaxiOOMDP(width=state_size, height=state_size, slip_prob=0.0, agent=agent, walls=walls, passengers=passengers)}[mdp_class]
 
     return mdp
 
-def make_mdp_distr(mdp_class="grid", num_mdps=15):
+def make_mdp_distr(mdp_class="grid", num_mdps=15, gamma=0.99):
     '''
     Args:
         mdp_class (str): one of {"grid", "random"}
@@ -51,15 +50,15 @@ def make_mdp_distr(mdp_class="grid", num_mdps=15):
     agent = {"x":1, "y":1, "has_passenger":0}
     walls = []
 
-    height, width= 8, 12
+    height, width= 10, 10
 
     for i in range(num_mdps):
-        new_mdp = {"grid":GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=r.sample(zip(range(1, width+1),[height]*width),2), is_goal_terminal=True),
-                    "four_room":FourRoomMDP(width=8, height=8, goal_locs=r.sample([(1,8),(8,1),(8,8),(6,6),(6,1),(1,6)], 2)),
-                    "chain":ChainMDP(num_states=5, reset_val=r.choice([0, 0.1, 0.5, 1.1])),
-                    "random":RandomMDP(num_states=40, num_rand_trans=r.randint(1,10)),
-                    "taxi":TaxiOOMDP(5, 5, slip_prob=0.0, agent_loc=agent, walls=walls, \
-                                    passengers=[{"x":2, "y":2, "dest_x":r.randint(1,3), "dest_y":r.randint(1,3), "in_taxi":0}])}[mdp_class]
+        new_mdp = {"grid":GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=rnd.sample(zip(range(1, width+1),[height]*width), 1), is_goal_terminal=True, gamma=gamma),
+                    "four_room":FourRoomMDP(width=8, height=8, goal_locs=rnd.sample([(1,8),(8,1),(8,8),(6,6),(6,1),(1,6)], 2), gamma=gamma),
+                    "chain":ChainMDP(num_states=10, reset_val=rnd.choice([0, 0.01, 0.05, 0.1]), gamma=gamma),
+                    "random":RandomMDP(num_states=40, num_rand_trans=rnd.randint(1,10), gamma=gamma),
+                    "taxi":TaxiOOMDP(5, 5, slip_prob=0.0, agent=agent, walls=walls, \
+                                    passengers=[{"x":2, "y":2, "dest_x":rnd.randint(1,3), "dest_y":rnd.randint(1,3), "in_taxi":0}], gamma=gamma)}[mdp_class]
 
         mdp_distr[new_mdp] = mdp_prob
 

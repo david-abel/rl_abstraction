@@ -1,5 +1,6 @@
 # Python imports.
 from collections import defaultdict
+import random as r
 
 # Other imports.
 from OptionClass import Option
@@ -21,6 +22,9 @@ class ActionAbstraction(object):
             ground_state (State)
             reward (float)
         '''
+        if ground_state.is_terminal():
+            return r.choice(self.prim_actions)
+
         if self.is_next_step_continuing_option(ground_state):
             # We're in an option and not terminating.
             a = self.get_next_ground_action(ground_state)
@@ -31,7 +35,8 @@ class ActionAbstraction(object):
 
             if len(active_options) == 0:
                 # No actions available.
-                agent.actions = self.prim_actions
+                print "Error: no actions available in state " + str(ground_state) + "."
+                quit()
             else:
                 # Give agent available options.
                 agent.actions = active_options
