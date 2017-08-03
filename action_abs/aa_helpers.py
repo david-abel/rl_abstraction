@@ -9,7 +9,7 @@ import cPickle
 # Other imports.
 from ActionAbstractionClass import ActionAbstraction
 from OptionClass import Option
-from simple_rl.utils.ValueIterationClass import ValueIteration
+from simple_rl.planning.ValueIterationClass import ValueIteration
 from simple_rl.mdp.MDPClass import MDP
 from EqPredicateClass import EqPredicate
 from PolicyFromDictClass import *

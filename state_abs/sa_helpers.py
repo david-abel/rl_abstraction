@@ -6,9 +6,9 @@ import sys
 import itertools
 
 # Other imports.
-from simple_rl.utils.ValueIterationClass import ValueIteration
-from StateAbstractionClass import StateAbstraction
+from simple_rl.planning.ValueIterationClass import ValueIteration
 from simple_rl.mdp.StateClass import State
+from StateAbstractionClass import StateAbstraction
 
 def merge_state_abs(list_of_sa):
     '''

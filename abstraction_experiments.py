@@ -8,9 +8,9 @@ import os
 # Other imports.
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
-from simple_rl.utils.ValueIterationClass import ValueIteration
-from AbstractionWrapperClass import AbstractionWrapper
+from simple_rl.planning.ValueIterationClass import ValueIteration
 from simple_rl.mdp.StateClass import State
+from AbstractionWrapperClass import AbstractionWrapper
 from state_abs.StateAbstractionClass import StateAbstraction
 from action_abs.ActionAbstractionClass import ActionAbstraction
 import state_abs

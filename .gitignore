@@ -1,2 +1,4 @@
 *.p
 *.pyc
+action_prior*
+results/
