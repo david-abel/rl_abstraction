@@ -21,7 +21,10 @@ class StateAbstraction(object):
         '''
         # Setup phi for new states.
         if state not in self._phi.keys():
-            self._phi[state] = max(self._phi.values()) + 1
+            if len(self._phi.values()) > 0:
+                self._phi[state] = max(self._phi.values()) + 1
+            else:
+                self._phi[state] = 1
 
         return self.state_class(self._phi[state])
 
