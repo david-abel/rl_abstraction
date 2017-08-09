@@ -17,7 +17,7 @@ class Option(object):
 		self.term_flag = False
 		self.name = name
 
-		if type(policy) is defaultdict:
+		if type(policy) is defaultdict or type(policy) is dict:
 			self.policy_dict = dict(policy)
 			self.policy = self.policy_from_dict
 		else:
