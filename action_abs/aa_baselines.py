@@ -1,12 +1,20 @@
 import sys
 import numpy as np
 
+import make_mdp
+from AbstractionWrapperClass import AbstractionWrapper
+from abstraction_experiments import get_sa
 from action_abs.ActionAbstractionClass import ActionAbstraction
 from action_abs.CovPredicate import CovPredicate
 from action_abs.EqPredicateClass import EqPredicate
 from action_abs.OptionClass import Option
 from action_abs.PolicyFromDictClass import make_dict_from_lambda
+from simple_rl.agents import QLearnerAgent
+from simple_rl.mdp import MDPDistribution
 from simple_rl.planning import ValueIteration
+from simple_rl.run_experiments import run_agents_multi_task
+from simple_rl.tasks.grid_world import GridWorldMDPClass
+from visualize_abstractions import visualize_options_grid
 
 
 def get_policy_blocks_aa(mdp_distr, num_options=10, task_samples=20, incl_prim_actions=False):
@@ -203,3 +211,36 @@ def make_policy_blocks_options(mdp_distr, num_options, task_samples):
     print 'Policy blocks returning with {0} options'.format(len(ret))
 
     return ret
+
+if __name__ == '__main__':
+
+    # MDP Setting.
+    mdp_class = "pblocks_grid"
+    num_mdps = 40
+    mdp_distr = {}
+    mdp_prob = 1.0 / num_mdps
+
+    for i in range(num_mdps):
+        new_mdp = GridWorldMDPClass.make_grid_world_from_file("action_abs/pblocks_grid.txt", randomize=True)
+        mdp_distr[new_mdp] = mdp_prob
+
+    actions = mdp_distr.keys()[0].actions
+    gamma = mdp_distr.keys()[0].gamma
+
+
+    ql_agent = QLearnerAgent(actions, gamma=gamma)
+
+    pblocks_aa = get_policy_blocks_aa(mdp_distr, num_options=5, task_samples=20, incl_prim_actions=True)
+    regular_sa = get_sa(mdp_distr, default=True)
+
+    pblocks_ql_agent = AbstractionWrapper(QLearnerAgent, actions, state_abs=regular_sa, action_abs=pblocks_aa, name_ext="aa")
+
+    agents = [pblocks_ql_agent, ql_agent]
+
+    mdp_distr = MDPDistribution(mdp_distr)
+    run_agents_multi_task(agents, mdp_distr, task_samples=100, episodes=1, steps=10000)
+
+    visualize_options_grid(mdp_distr.sample(1), regular_sa.get_ground_states(), pblocks_aa)
+
+
+
