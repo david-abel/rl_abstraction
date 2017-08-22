@@ -16,7 +16,6 @@ from action_abs.PolicyFromDictClass import make_dict_from_lambda, PolicyFromDict
 from simple_rl.planning import ValueIteration
 from simple_rl.run_experiments import run_agents_multi_task
 from simple_rl.tasks.grid_world import GridWorldMDPClass
-from visualize_abstractions import visualize_options_grid
 
 
 def get_aa_high_prob_opt_single_act(mdp_distr, state_abstr, delta=0.2):
@@ -380,6 +379,8 @@ if __name__ == '__main__':
 
     mdp_distr = MDPDistribution(mdp_distr)
     run_agents_multi_task(agents, mdp_distr, task_samples=100, episodes=1, steps=10000)
+    
+    from visualize_abstractions import visualize_options_grid
 
     visualize_options_grid(mdp_distr.sample(1), regular_sa.get_ground_states(), pblocks_aa)
 
