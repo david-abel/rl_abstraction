@@ -1,11 +1,11 @@
 from collections import defaultdict
-import random as r
+import random
 from simple_rl.mdp.StateClass import State
 
 
 class Option(object):
 
-	def __init__(self, init_predicate, term_predicate, policy, name="o"):
+	def __init__(self, init_predicate, term_predicate, policy, name="o", term_prob=0.0):
 		'''
 		Args:
 			init_func (S --> {0,1})
@@ -16,6 +16,7 @@ class Option(object):
 		self.term_predicate = term_predicate
 		self.term_flag = False
 		self.name = name
+		self.term_prob = term_prob
 
 		if type(policy) is defaultdict or type(policy) is dict:
 			self.policy_dict = dict(policy)
@@ -27,7 +28,7 @@ class Option(object):
 		return self.init_predicate.is_true(ground_state)
 
 	def is_term_true(self, ground_state):
-		return self.term_predicate.is_true(ground_state) or self.term_flag
+		return self.term_predicate.is_true(ground_state) or self.term_flag or self.term_prob > random.random()
 
 	def act(self, ground_state):
 		return self.policy(ground_state)
@@ -53,7 +54,7 @@ class Option(object):
 	def policy_from_dict(self, state):
 		if state not in self.policy_dict.keys():
 			self.term_flag = True
-			return r.choice(list(set(self.policy_dict.values())))
+			return random.choice(list(set(self.policy_dict.values())))
 		else:
 			self.term_flag = False
 			return self.policy_dict[state]

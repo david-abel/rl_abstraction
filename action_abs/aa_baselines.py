@@ -1,13 +1,152 @@
+# Python imports.
 import sys
 import numpy as np
+from collections import defaultdict
+import random
 
+# Other imports.
 from action_abs.ActionAbstractionClass import ActionAbstraction
-from action_abs.CovPredicate import CovPredicate
-from action_abs.EqPredicateClass import EqPredicate
+from action_abs.ContainsPredicateClass import ContainsPredicate
+from action_abs.CovPredicateClass import CovPredicate
+from action_abs.EqPredicateClass import EqPredicate, NeqPredicate
+from action_abs.NotPredicateClass import NotPredicate
 from action_abs.OptionClass import Option
-from action_abs.PolicyFromDictClass import make_dict_from_lambda
+from action_abs.PolicyClass import Policy
+from action_abs.PolicyFromDictClass import make_dict_from_lambda, PolicyFromDict
 from simple_rl.planning import ValueIteration
 
+
+def get_aa_high_prob_opt_single_act(mdp_distr, state_abstr, delta=0.2):
+    '''
+    Args:
+        mdp_distr
+        state_abstr (StateAbstraction)
+
+    Summary:
+        Computes an action abstraction where there exists an option that repeats a
+        single primitive action, for each primitive action that was optimal *with
+        high probability* in the ground state in the cluster.
+    '''
+    # K: state, V: dict (K: act, V: probability)
+    action_optimality_dict = state_abstr.get_act_opt_dict()
+
+    # Compute options.
+    options = []
+    for s_a in state_abstr.get_abs_states():
+
+        ground_states = state_abstr.get_ground_states_in_abs_state(s_a)
+
+        # One option per action.
+        for action in mdp_distr.get_actions():
+            list_of_state_with_a_optimal_high_pr = []
+
+            # Compute which states have high prob of being optimal.
+            for s_g in ground_states:
+                print "Pr(a = a^* \mid s_g)", s_g, action, action_optimality_dict[s_g][action]
+                if action_optimality_dict[s_g][action] > (1-delta):
+                    list_of_state_with_a_optimal_high_pr.append(s_g)
+
+            if len(list_of_state_with_a_optimal_high_pr) == 0:
+                continue
+
+            init_predicate = ContainsPredicate(list_of_items=list_of_state_with_a_optimal_high_pr)
+            term_predicate = NotPredicate(init_predicate)
+            policy_obj = Policy(action)
+
+            o = Option(init_predicate=init_predicate,
+                        term_predicate=term_predicate,
+                        policy=policy_obj.get_action)
+
+            options.append(o)
+
+    return ActionAbstraction(options=options, prim_actions=mdp_distr.get_actions(), prims_on_failure=True)
+
+
+def get_aa_opt_only_single_act(mdp_distr, state_abstr):
+    '''
+    Args:
+        mdp_distr
+        state_abstr (StateAbstraction)
+
+    Summary:
+        Computes an action abstraction where there exists an option that repeats a
+        single primitive action, for each primitive action that was optimal in
+        the ground state in the cluster.
+    '''
+    action_optimality_dict = state_abstr.get_act_opt_dict()
+    
+    # Compute options.
+    options = []
+    for s_a in state_abstr.get_abs_states():
+
+        ground_states = state_abstr.get_ground_states_in_abs_state(s_a)
+
+        # One option per action.
+        for action in mdp_distr.get_actions():
+            list_of_state_with_a_optimal = []
+
+            for s_g in ground_states:
+                if action in action_optimality_dict[s_g]:
+                    list_of_state_with_a_optimal.append(s_g)
+
+            if len(list_of_state_with_a_optimal) == 0:
+                continue
+
+            init_predicate = ContainsPredicate(list_of_items=list_of_state_with_a_optimal)
+            term_predicate = NotPredicate(init_predicate)
+            policy_obj = Policy(action)
+
+            o = Option(init_predicate=init_predicate,
+                        term_predicate=term_predicate,
+                        policy=policy_obj.get_action,
+                        term_prob=1-mdp_distr.get_gamma())
+
+            options.append(o)
+
+    return ActionAbstraction(options=options, prim_actions=mdp_distr.get_actions())
+
+
+def get_aa_single_act(mdp_distr, state_abstr):
+    '''
+    Args:
+        mdp_distr
+        state_abstr (StateAbstraction)
+
+    Summary:
+        Computes an action abstraction where there exists an option that repeats a
+        single primitive action, for each primitive action that was optimal in the
+        cluster.
+    '''
+
+    action_optimality_dict = state_abstr.get_act_opt_dict()
+
+    options = []
+    # Compute options.
+    for s_a in state_abstr.get_abs_states():
+        init_predicate = EqPredicate(y=s_a, func=state_abstr.phi)
+        term_predicate = NeqPredicate(y=s_a, func=state_abstr.phi)
+
+        ground_states = state_abstr.get_ground_states_in_abs_state(s_a)
+
+        unique_a_star_in_cluster = set([])
+        for s_g in ground_states:
+            for a_star in action_optimality_dict[s_g]:
+                unique_a_star_in_cluster.add(a_star)
+
+        for action in unique_a_star_in_cluster:
+            policy_obj = Policy(action)
+
+            o = Option(init_predicate=init_predicate,
+                        term_predicate=term_predicate,
+                        policy=policy_obj.get_action)
+            options.append(o)
+
+    return ActionAbstraction(options=options, prim_actions=mdp_distr.get_actions())
+
+
+# ---------------------
+# --- POLICY BLOCKS ---
+# ---------------------
 
 def get_policy_blocks_aa(mdp_distr, num_options=10, task_samples=20, incl_prim_actions=False):
     pb_options = make_policy_blocks_options(mdp_distr, num_options=num_options, task_samples=task_samples)
@@ -145,8 +284,7 @@ def make_policy_blocks_options(mdp_distr, num_options, task_samples):
         print "  Sample " + str(new_task + 1) + " of " + str(task_samples) + "."
 
         # Sample the MDP.
-        mdp_id = np.random.multinomial(1, mdp_distr.values()).tolist().index(1)
-        mdp = mdp_distr.keys()[mdp_id]
+        mdp = mdp_distr.sample()
 
         # Run VI to get a policy for the MDP as well as the list of states
         print "\tRunning VI...",

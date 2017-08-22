@@ -7,9 +7,52 @@ from simple_rl.mdp.MDPClass import MDP
 
 class StateAbstraction(object):
 
-    def __init__(self, phi={}, state_class=State):
+    def __init__(self, phi={}, state_class=State, track_act_opt_pr=False):
+        '''
+        Args:
+            phi (dict)
+            state_class (Class)
+            track_act_opt_pr (bool): If true, tracks the probability with which
+            each action is optimal in each ground state w.r.t. the distribution.
+        '''
         self._phi = phi # key:state, val:int. (int represents an abstract state).
         self.state_class = state_class
+        self.track_act_opt_pr = track_act_opt_pr
+        if self.track_act_opt_pr:
+            self.phi_act_optimality_dict = defaultdict(lambda:defaultdict(float))
+                # Key: Ground State
+                # Val: Dict
+                    # Key: Action.
+                    # Val: Probability it's optimal.
+        else:
+            self.phi_act_optimality_dict = defaultdict(set)
+
+    def get_act_opt_dict(self):
+        return self.phi_act_optimality_dict
+
+    def set_act_opt_dict(self, new_dict):
+        if self.track_act_opt_pr and (len(new_dict.keys()) == 0 or isinstance(new_dict.keys()[0], dict)):
+            print "State Abstraction Error: Tried setting optimality dict of incorrect type. Must be K:state, V:dict (K: action, V: probability)."
+            quit()
+        self.phi_act_optimality_dict = new_dict
+
+    def set_actions_state_opt_dict(self, ground_state, action_set, prob_of_mdp=1.0):
+        '''
+        Args:
+            ground_state (State)
+            action (str)
+
+        Summary:
+            Tracks optimal actions in each abstract state.
+        '''
+        if self.track_act_opt_pr:
+            for a in action_set:
+                self.phi_act_optimality_dict[ground_state][a] = prob_of_mdp
+        else:
+            self.phi_act_optimality_dict[ground_state] = action_set
+
+    def set_phi(self, new_phi):
+        self._phi = new_phi
 
     def phi(self, state):
         '''
@@ -109,8 +152,7 @@ class StateAbstraction(object):
             other_cluster_dict[v].append(k)
 
         for state in self._phi.keys():
-
-            # Get the two clusters associate with a state.
+            # Get the two clusters associated with a state.
             states_cluster = self._phi[state]
             states_other_cluster = other_abs._phi[state]
 
@@ -119,5 +161,28 @@ class StateAbstraction(object):
                     # Every state that's in both clusters, merge.
                     merged_state_abs[s] = states_cluster
 
-        return StateAbstraction(phi=merged_state_abs)
+        new_sa = StateAbstraction(phi=merged_state_abs, track_act_opt_pr=self.track_act_opt_pr)
+
+        # Grab the two action optimality dictionaries.
+        opt_dict = self.get_act_opt_dict()
+        other_opt_dict = other_abs.get_act_opt_dict()
+
+        # Build the new action optimality dictionary.
+
+        if self.track_act_opt_pr:
+            # If we're tracking the action's probability.
+            new_dict = defaultdict(lambda:defaultdict(float))
+            for s_g in self.get_ground_states():
+                for a_g in opt_dict[s_g].keys() + other_opt_dict[s_g].keys():
+                    # print opt_dict[s_g][a_g], type(opt_dict[s_g][a_g])
+                    new_dict[s_g][a_g] = opt_dict[s_g][a_g] + other_opt_dict[s_g][a_g]
+        else:
+            new_dict = defaultdict(set)
+            for ground_state in self.get_ground_states():
+                new_action_set = opt_dict[ground_state].union(other_opt_dict[ground_state])
+                new_dict[ground_state] = new_action_set
+                # new_sa.set_actions_state_opt_dict(ground_state, new_action_set)
+
+        new_sa.set_act_opt_dict(new_dict)
+        return new_sa
 

@@ -1,4 +1,7 @@
 class Policy(object):
 
+	def __init__(self, action=""):
+		self.action = action
+
 	def get_action(self, state):
-		pass
+		return self.action

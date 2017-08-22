@@ -9,6 +9,7 @@ from collections import defaultdict
 # Pygame setup.
 try:
     import pygame
+    from pygame.locals import *
     pygame.init()
     title_font = pygame.font.SysFont("CMU Serif", 32)
     small_font = pygame.font.SysFont("CMU Serif", 22)
@@ -18,16 +19,17 @@ except ImportError:
     quit()
 
 # Other imports.
-from pygame.locals import *
-from abstraction_experiments import *
-import make_mdp
-from simple_rl.tasks import FourRoomMDP
+from simple_rl.utils import make_mdp
 from simple_rl.utils import mdp_visualizer
+from simple_rl.agents import RandomAgent
+from simple_rl.mdp import MDPDistribution
+from abstraction_experiments import *
+from state_abs import indicator_funcs as ind_funcs
 
 colors = [[240, 163, 255], [113, 113, 198],[197, 193, 170],\
                 [113, 198, 113],[85, 85, 85], [198, 113, 113],\
                 [142, 56, 142], [125, 158, 192],[184, 221, 255],\
-                [153, 63, 0], [142, 142, 56], [56, 142, 142]]
+                [153, 63, 0], [142, 142, 56], [56, 142, 142], [245, 228, 199]]
 
 def visualize_state_abstr_grid(grid_mdp, state_abstr, scr_width=720, scr_height=720):
     '''
@@ -38,6 +40,15 @@ def visualize_state_abstr_grid(grid_mdp, state_abstr, scr_width=720, scr_height=
     Summary:
         Visualizes the state abstraction.
     '''
+
+    if isinstance(grid_mdp, MDPDistribution):
+        goal_locs = set([])
+        for m in grid_mdp.get_all_mdps():
+            for g in m.get_goal_locs():
+                goal_locs.add(g)
+        grid_mdp = grid_mdp.sample()
+    else:
+        goal_locs = grid_mdp.get_goal_locs()
 
     # Pygame init.  
     screen = pygame.display.set_mode((scr_width, scr_height))
@@ -52,7 +63,6 @@ def visualize_state_abstr_grid(grid_mdp, state_abstr, scr_width=720, scr_height=
     height_buffer = 30 + (scr_height / 10.0) # Add 30 for title.
     cell_width = (scr_width - width_buffer * 2) / grid_mdp.width
     cell_height = (scr_height - height_buffer * 2) / grid_mdp.height
-    goal_locs = grid_mdp.get_goal_locs()
     font_size = int(min(cell_width, cell_height) / 4.0)
     reg_font = pygame.font.SysFont("CMU Serif", font_size)
     cc_font = pygame.font.SysFont("Courier", font_size*2 + 2)
@@ -108,6 +118,19 @@ def visualize_options_grid(grid_mdp, state_space, action_abstr, scr_width=720, s
         action_abstr (ActionAbstraction)
     '''
 
+    if len(action_abstr.get_actions()) == 0:
+        print "Options Error: 0 options found. Can't visualize."
+        sys.exit(0)
+
+    if isinstance(grid_mdp, MDPDistribution):
+        goal_locs = set([])
+        for m in grid_mdp.get_all_mdps():
+            for g in m.get_goal_locs():
+                goal_locs.add(g)
+        grid_mdp = grid_mdp.sample()
+    else:
+        goal_locs = grid_mdp.get_goal_locs()
+
     # Pygame init.  
     screen = pygame.display.set_mode((scr_width, scr_height))
     pygame.init()
@@ -129,12 +152,12 @@ def visualize_options_grid(grid_mdp, state_space, action_abstr, scr_width=720, s
     next_option = action_abstr.get_actions()[option_index]
     visualize_option(screen, grid_mdp, state_dict, option=next_option)
 
-    # Init rect and text.
+    # Initiation rect and text.
     option_text = small_font.render("Init: ", True, (46, 49, 49))
     screen.blit(option_text, (40, option_text_point[1]))
-    pygame.draw.rect(screen, colors[0], (90, option_text_point[1]) + (24, 24))
+    pygame.draw.rect(screen, colors[-1], (90, option_text_point[1]) + (24, 24))
 
-    # Init rect and text.
+    # Terminal rect and text.
     option_text = small_font.render("Term: ", True, (46, 49, 49))
     screen.blit(option_text, (scr_width - 150, option_text_point[1]))
     pygame.draw.rect(screen, colors[1], (scr_width - 80, option_text_point[1]) + (24, 24))
@@ -159,14 +182,14 @@ def visualize_options_grid(grid_mdp, state_space, action_abstr, scr_width=720, s
                     option_index = len(action_abstr.get_actions()) - 1
 
             next_option = action_abstr.get_actions()[option_index]
-            visualize_option(screen, grid_mdp, state_dict, option=next_option)
+            visualize_option(screen, grid_mdp, state_dict, option=next_option, goal_locs=goal_locs)
             pygame.draw.rect(screen, (255, 255, 255), (130, option_text_point[1]) + (scr_width-290 , 50))
             opt_str = "Option " + str(option_index + 1) + " of " + str(len(action_abstr.get_actions())) # + ":" + str(next_option)
             option_text = title_font.render(opt_str, True, (46, 49, 49))
             screen.blit(option_text, option_text_point)
 
 
-def visualize_option(screen, grid_mdp, state_dict, option=None):
+def visualize_option(screen, grid_mdp, state_dict, option=None, goal_locs=[]):
     '''
     Args:
         screen (pygame.Surface)
@@ -178,6 +201,7 @@ def visualize_option(screen, grid_mdp, state_dict, option=None):
                 Val: state
 
     '''
+
 
     # Action char mapping.
     action_char_dict = {
@@ -193,7 +217,6 @@ def visualize_option(screen, grid_mdp, state_dict, option=None):
     height_buffer = 30 + (scr_height / 10.0) # Add 30 for title.
     cell_width = (scr_width - width_buffer * 2) / grid_mdp.width
     cell_height = (scr_height - height_buffer * 2) / grid_mdp.height
-    goal_locs = grid_mdp.get_goal_locs()
     font_size = int(min(cell_width, cell_height) / 4.0)
     reg_font = pygame.font.SysFont("CMU Serif", font_size)
     cc_font = pygame.font.SysFont("Courier", font_size*2 + 2)
@@ -235,7 +258,7 @@ def visualize_option(screen, grid_mdp, state_dict, option=None):
 
                 if option.is_init_true(s):
                     # Init.
-                    r = pygame.draw.rect(screen, colors[0], (top_left_point[0] + 5, top_left_point[1] + 5) + (cell_width - 10, cell_height - 10), 0)
+                    r = pygame.draw.rect(screen, colors[-1], (top_left_point[0] + 5, top_left_point[1] + 5) + (cell_width - 10, cell_height - 10), 0)
                 elif option.is_term_true(s):
                     # Term.
                     r = pygame.draw.rect(screen, colors[1], (top_left_point[0] + 5, top_left_point[1] + 5) + (cell_width - 10, cell_height - 10), 0)
@@ -252,6 +275,18 @@ def visualize_option(screen, grid_mdp, state_dict, option=None):
                 text_center_point = int(top_left_point[0] + cell_width/2.0 - 10), int(top_left_point[1] + cell_height/4.0)
                 text_rendered_a = cc_font.render(text_a, True, (46, 49, 49))
                 screen.blit(text_rendered_a, text_center_point)
+
+            if (i+1,grid_mdp.height - j) in goal_locs:
+                # Draw goal.
+                circle_center = int(top_left_point[0] + cell_width/2.0), int(top_left_point[1] + cell_height/2.0)
+                circler_color = (154, 195, 157)
+                pygame.draw.circle(screen, circler_color, circle_center, int(min(cell_width, cell_height) / 3.0))
+
+                # Goal text.                
+                text = reg_font.render("Goal", True, (46, 49, 49))
+                offset = int(min(cell_width, cell_height) / 3.0)
+                goal_text_point = circle_center[0] - font_size, circle_center[1] - font_size/1.5
+                screen.blit(text, goal_text_point)
 
     pygame.display.flip()
 
@@ -271,26 +306,45 @@ def parse_args():
 def main():
 
     # MDP Setting.
+    multi_task = True
     mdp_class = "four_room"
     is_sa = parse_args()
 
-    # Single Task.
-    mdp = make_mdp.make_mdp(mdp_class=mdp_class)
-    actions = mdp.actions
-    gamma = mdp.gamma
+    # Make single/multi task environment.
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
+    actions = environment.get_actions()
+    gamma = environment.get_actions()
 
     # Grab SA and AA for each abstraction agent.   
-    directed_sa, directed_aa = get_abstractions(mdp, directed=True)
-    regular_sa, regular_aa = directed_sa, get_aa(mdp, actions, default=True)
+    directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_approx_indicator, directed=True)
+
+    # regular_sa, regular_aa = directed_sa, get_aa(environment, default=True)
+    # default_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment)
 
     abs_type = parse_args()
 
     if abs_type == "sa":
         # Visualize State Abstractions.
-        visualize_state_abstr_grid(mdp, directed_sa)
+        visualize_state_abstr_grid(environment, hand_sa)
     elif abs_type == "aa":
         # Visualize Action Abstractions.
-        visualize_options_grid(mdp, regular_sa.get_ground_states(), directed_aa)
+        visualize_options_grid(environment, directed_sa.get_ground_states(), directed_aa)
+    elif abs_type == "hand" and mdp_class == "four_room":
+        hand_sa, hand_aa = get_abstractions(environment, ind_funcs._four_rooms, directed=True)
+        visualize_options_grid(environment, hand_sa.get_ground_states(), hand_aa)
+    elif abs_type == "pblocks":
+        visualize_options_grid(environment, default_sa.get_ground_states(), pblocks_aa)
+    elif abs_type == "michael":
+        michael_thing_sa = directed_sa #state_abs.sa_helpers.make_multitask_sa(environment)
+        michael_thing_aa = action_abs.aa_baselines.get_aa_single_act(environment, michael_thing_sa)
+        visualize_options_grid(environment, michael_thing_sa.get_ground_states(), michael_thing_aa)
+    elif abs_type == "opt":
+        opt_action_sa = directed_sa
+        opt_action_aa = action_abs.aa_baselines.get_aa_opt_only_single_act(environment, opt_action_sa)
+        visualize_options_grid(environment, opt_action_sa.get_ground_states(), opt_action_aa)
+    elif abs_type == "pr":
+        hi_pr_opt_action_aa = action_abs.aa_baselines.get_aa_high_prob_opt_single_act(environment, directed_sa, delta=0.3)
+        visualize_options_grid(environment, directed_sa.get_ground_states(), hi_pr_opt_action_aa)
     else:
         print "Error: abs type not recognized (" + abs_type + "). Options include {aa, sa}."
         quit()

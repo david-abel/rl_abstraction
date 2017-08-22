@@ -6,28 +6,31 @@ from collections import defaultdict
 import os
 
 # Other imports.
+from simple_rl.utils import make_mdp
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
 from simple_rl.planning.ValueIterationClass import ValueIteration
-from simple_rl.mdp.StateClass import State
+from simple_rl.mdp import State, MDPDistribution
 from AbstractionWrapperClass import AbstractionWrapper
 from state_abs.StateAbstractionClass import StateAbstraction
 from action_abs.ActionAbstractionClass import ActionAbstraction
 import state_abs
 import action_abs
-import make_mdp
+from state_abs import indicator_funcs as ind_funcs
 
 # -------------------------
 # --- Make Abstractions ---
 # -------------------------
 
-def get_sa(mdp, make_new_sa=True, default=False, epsilon=0.0):
+def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0, track_act_opt_pr=False):
     '''
     Args:
-        mdp (MDP)
-        make_new_sa (bool)
+        mdp_distr (MDPDistributon)
+        indicator_func (lambda): Indicator function from state_abs/indicator_funcs.py
         default (bool): If true, returns a blank StateAbstraction
         epsilon (float): Determines approximation for clustering.
+        track_act_prob (bool): If true, the state abstraction keeps track
+            of the probability of each action's probability in ground states.
 
     Returns:
         (StateAbstraction)
@@ -36,26 +39,14 @@ def get_sa(mdp, make_new_sa=True, default=False, epsilon=0.0):
     if default:
         return StateAbstraction()
 
-    # Make State Abstraction.
-    should_save_sa = False
-    q_equiv_sa = StateAbstraction(state_class=State)
-    if make_new_sa:
-        state_abs.sa_helpers.make_and_save_sa(mdp, state_class=State, epsilon=epsilon)
-    else:
-        mdp_name = str(mdp)
-        if type(mdp) is dict:
-            mdp_name = str("multitask-") + str(mdp.keys()[0])
-        q_equiv_sa = state_abs.sa_helpers.load_sa(str(mdp_name) + ".p")
-        if q_equiv_sa is None:
-            state_abs.sa_helpers.make_and_save_sa(mdp, state_class=State)
+    state_abstr = state_abs.sa_helpers.make_sa(mdp_distr, indic_func=indic_func, state_class=State, epsilon=epsilon, track_act_opt_pr=track_act_opt_pr)
 
-    return q_equiv_sa
+    return state_abstr
 
-def get_aa(mdp_distr, actions, default=False):
+def get_aa(mdp_distr, default=False):
     '''
     Args:
         mdp (defaultdict)
-        actions (list of str)
         default (bool): If true, returns a blank ActionAbstraction
 
     Returns:
@@ -63,7 +54,7 @@ def get_aa(mdp_distr, actions, default=False):
     '''
     
     if default:
-        return ActionAbstraction(options=actions, prim_actions=actions)
+        return ActionAbstraction(options=mdp_distr.get_actions(), prim_actions=mdp_distr.get_actions())
 
     return action_abs.aa_helpers.make_greedy_options(mdp_distr)
 
@@ -77,12 +68,7 @@ def get_directed_aa(mdp_distr, state_abs, incl_prim_actions=False):
     Returns:
         (ActionAbstraction)
     '''
-    # Compute directed options for mdp/mdp_distr.
-    if type(mdp_distr) is dict:
-        first_mdp = mdp_distr.keys()[0]
-    else:
-        first_mdp = mdp_distr
-    directed_options = action_abs.aa_helpers.get_directed_options_for_sa(first_mdp, state_abs)
+    directed_options = action_abs.aa_helpers.get_directed_options_for_sa(mdp_distr, state_abs, inc_self_loops=True)
 
     if not directed_options:
         # No good option set found.
@@ -90,13 +76,13 @@ def get_directed_aa(mdp_distr, state_abs, incl_prim_actions=False):
 
     if incl_prim_actions:
         # Include the primitives.
-        aa = ActionAbstraction(options=first_mdp.get_actions(), prim_actions=first_mdp.get_actions())
+        aa = ActionAbstraction(options=mdp_distr.get_actions(), prim_actions=mdp_distr.get_actions(), prims_on_failure=True)
         for o in directed_options:
             aa.add_option(o)
         return aa
     else:
         # Return just the options.
-        return ActionAbstraction(options=directed_options, prim_actions=first_mdp.get_actions())
+        return ActionAbstraction(options=directed_options, prim_actions=mdp_distr.get_actions(), prims_on_failure=True)
 
 def compare_planning_abstr(mdp, abstr_mdp):
     '''
@@ -116,11 +102,11 @@ def compare_planning_abstr(mdp, abstr_mdp):
 
     return iters, abstr_iters
 
-def get_directed_option_sa_pair(mdp):
+def get_directed_option_sa_pair(mdp, indic_func):
     '''
     Args:
-        mdp (MDP)
-        make_new_abs (bool)
+        mdp (MDP) or (MDPDistribution)
+        indic_func
 
     Returns:
         (StateAbstraction, ActionAbstraction)
@@ -134,7 +120,8 @@ def get_directed_option_sa_pair(mdp):
         print "Epsilon:", sa_epsilon
 
         # Compute the SA-AA pair.
-        sa = get_sa(mdp, make_new_sa=True, default=False, epsilon=sa_epsilon)
+        # NOTE: Track act_opt_pr is TRUE
+        sa = get_sa(mdp, indic_func=indic_func, default=False, epsilon=sa_epsilon, track_act_opt_pr=False)
 
         if sa.get_num_abstr_states() == 1:
             # We can't have only 1 abstract state.
@@ -152,17 +139,18 @@ def get_directed_option_sa_pair(mdp):
 
     return sa, aa
 
-def get_abstractions(mdp, directed=True):
+def get_abstractions(mdp, indic_func, directed=True):
     '''
     Args:
+        mdp (MDP or MDPDistribution)
 
     Returns:
         (StateAbstraction, ActionAbstraction)
     '''
     if directed:
-        return get_directed_option_sa_pair(mdp)
+        return get_directed_option_sa_pair(mdp, indic_func=indic_func)
     else:
-        sa = get_sa(mdp)
+        sa = get_sa(mdp, indic_func=indic_func)
         aa = get_aa(mdp)
         return sa, aa
 
@@ -206,47 +194,68 @@ def print_aa(action_abstr, state_space):
             print s,
         print
         print
+        print
 
 def main():
 
-    # MDP Setting.
+    # ========================
+    # === Make Environment ===
+    # ========================
     multi_task = True
-    mdp_class = "grid"
+    mdp_class = "four_room"
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=15) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
+    actions = environment.get_actions()
+    gamma = environment.get_gamma()
 
-    # Single Task.
-    mdp = make_mdp.make_mdp(mdp_class=mdp_class)
-    actions = mdp.actions
-    gamma = mdp.gamma
+    # Indicator functions.
+    v_indic = ind_funcs._v_approx_indicator
+    q_indic = ind_funcs._q_eps_approx_indicator
+    rand_indic = ind_funcs._random
 
-    if multi_task:
-        # Multi Task
-        mdp = make_mdp.make_mdp_distr(mdp_class=mdp_class, num_mdps=4)
-        actions = mdp.keys()[0].actions
-        gamma = mdp.keys()[0].gamma
+    # =========================
+    # === Make Abstractions ===
+    # =========================
 
-    # Grab SA and AA for each abstraction agent.   
-    directed_sa, directed_aa = get_abstractions(mdp, directed=True)
-    regular_sa, regular_aa = directed_sa, get_aa(mdp, actions, default=True)
+        # Directed Variants.
+    q_directed_sa, q_directed_aa = get_abstractions(environment, q_indic, directed=True)
+    v_directed_sa, v_directed_aa = get_abstractions(environment, v_indic, directed=True)
+    rand_directed_sa, rand_directed_aa = get_abstractions(environment, rand_indic, directed=True)
 
-    # Make Agents.
+        # Policy Blocks.
+    pblocks_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment, incl_prim_actions=True)
+
+        # Identity action abstraction.
+    identity_aa = get_aa(environment, default=True)
+
+    # ===================
+    # === Make Agents ===
+    # ===================
+
+    # Base Agents.
+    agent_class = QLearnerAgent
     rand_agent = RandomAgent(actions)
-    rmax_agent = RMaxAgent(actions, gamma=gamma, s_a_threshold=1)
     ql_agent = QLearnerAgent(actions, gamma=gamma)
 
-    # Make Abstraction Agents.
-    abs_rmax_agent_directed = AbstractionWrapper(RMaxAgent, actions, state_abs=directed_sa, action_abs=directed_aa, name_ext="sa+aa")
-    abs_rmax_agent = AbstractionWrapper(RMaxAgent, actions, state_abs=directed_sa, action_abs=regular_aa, name_ext="sa")
-    abs_ql_agent_directed = AbstractionWrapper(QLearnerAgent, actions, state_abs=directed_sa, action_abs=directed_aa, name_ext="sa+aa")
-    abs_ql_agent = AbstractionWrapper(QLearnerAgent, actions, state_abs=directed_sa, action_abs=regular_aa, name_ext="sa")
-    
-    # agents = [abs_rmax_agent_directed, abs_rmax_agent, rmax_agent]
-    agents = [abs_ql_agent_directed, ql_agent]
+    # Abstraction Extensions.
+    qabs_ql_agent_directed = AbstractionWrapper(agent_class, actions, state_abstr=q_directed_sa, action_abstr=q_directed_aa, name_ext="q-sa+aa")
+    vabs_ql_agent_directed = AbstractionWrapper(agent_class, actions, state_abstr=v_directed_sa, action_abstr=v_directed_aa, name_ext="v-sa+aa")
+    rabs_ql_agent_directed = AbstractionWrapper(agent_class, actions, state_abstr=rand_directed_sa, action_abstr=rand_directed_aa, name_ext="rand-sa+aa")
+    abs_ql_agent = AbstractionWrapper(agent_class, actions, state_abstr=q_directed_sa, action_abstr=identity_aa, name_ext="sa")
+    pblocks_ql_agent = AbstractionWrapper(agent_class, actions, state_abstr=pblocks_sa, action_abstr=pblocks_aa, name_ext="pblocks")
+    agents = [qabs_ql_agent_directed, vabs_ql_agent_directed, rabs_ql_agent_directed, pblocks_ql_agent, abs_ql_agent, ql_agent]
+
+    if mdp_class == "four_room":
+        # Add handmade four room if needed.
+        hand_directed_sa, hand_directed_aa = get_abstractions(environment, ind_funcs._four_rooms, directed=True)
+        habs_ql_agent_directed = AbstractionWrapper(agent_class, actions, state_abstr=hand_directed_sa, action_abstr=hand_directed_aa, name_ext="hand-sa+aa")
+        agents.append(habs_ql_agent_directed)
 
     # Run experiments.
     if multi_task:
-        run_agents_multi_task(agents, mdp, task_samples=20, episodes=1000, steps=20)
+        run_agents_multi_task(agents, environment, task_samples=400, steps=500, episodes=1, reset_at_terminal=True)
     else:
-        run_agents_on_mdp(agents, mdp, instances=20, episodes=1000, steps=75)
+        run_agents_on_mdp(agents, environment, instances=20, episodes=100, reset_at_terminal=True)
+
 
 if __name__ == "__main__":
     main()
