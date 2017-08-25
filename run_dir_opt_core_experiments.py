@@ -49,7 +49,7 @@ def main():
 	spawn_subproc(task="taxi", samples=500, steps=2000,  grid_dim=4)
 
 	# Pblocks grid
-	spawn_subproc(task="pblocks", samples=100, steps=50000)
+	spawn_subproc(task="pblocks_grid", samples=100, steps=50000)
 
 if __name__ == "__main__":
 	main()
