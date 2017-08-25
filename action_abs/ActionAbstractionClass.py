@@ -1,6 +1,6 @@
 # Python imports.
 from collections import defaultdict
-import random as r
+import random
 
 # Other imports.
 from OptionClass import Option
@@ -13,7 +13,7 @@ class ActionAbstraction(object):
         self.is_cur_executing = False
         self.cur_option = None # The option we're executing currently.
         self.prim_actions = prim_actions
-        self.term_prob = 0.0
+        self.term_prob = term_prob
         self.prims_on_failure = prims_on_failure
 
     def act(self, agent, abstr_state, ground_state, reward):
@@ -25,9 +25,9 @@ class ActionAbstraction(object):
             reward (float)
         '''
         if ground_state.is_terminal():
-            return r.choice(self.prim_actions)
+            return random.choice(self.prim_actions)
 
-        if self.is_next_step_continuing_option(ground_state):# and random.random() > self.term_prob:
+        if self.is_next_step_continuing_option(ground_state) and random.random() > self.term_prob:
             # We're in an option and not terminating.
             a = self.get_next_ground_action(ground_state)
             return a
@@ -50,6 +50,7 @@ class ActionAbstraction(object):
             abstr_action = agent.act(abstr_state, reward)
 
             self.set_option_executing(abstr_action)
+
             return self.abs_to_ground(ground_state, abstr_action)
 
     def get_active_options(self, state):

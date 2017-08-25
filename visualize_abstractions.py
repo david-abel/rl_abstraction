@@ -307,19 +307,20 @@ def main():
 
     # MDP Setting.
     multi_task = True
-    mdp_class = "four_room"
+    mdp_class = "octo"
     is_sa = parse_args()
 
     # Make single/multi task environment.
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=5) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
     actions = environment.get_actions()
     gamma = environment.get_actions()
+
+    
 
     # Grab SA and AA for each abstraction agent.   
     directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_approx_indicator, directed=True)
 
     # regular_sa, regular_aa = directed_sa, get_aa(environment, default=True)
-    # default_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment)
 
     abs_type = parse_args()
 
@@ -333,6 +334,7 @@ def main():
         hand_sa, hand_aa = get_abstractions(environment, ind_funcs._four_rooms, directed=True)
         visualize_options_grid(environment, hand_sa.get_ground_states(), hand_aa)
     elif abs_type == "pblocks":
+        default_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment)
         visualize_options_grid(environment, default_sa.get_ground_states(), pblocks_aa)
     elif abs_type == "michael":
         michael_thing_sa = directed_sa #state_abs.sa_helpers.make_multitask_sa(environment)

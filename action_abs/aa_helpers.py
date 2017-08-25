@@ -13,16 +13,19 @@ from simple_rl.planning.ValueIterationClass import ValueIteration
 from simple_rl.mdp.MDPClass import MDP
 from EqPredicateClass import EqPredicate, NeqPredicate
 from PolicyFromDictClass import *
+from simple_rl.tasks import GridWorldMDP
 
 # ----------------------
 # -- Directed Options --
 # ----------------------
 
-def get_directed_options_for_sa(mdp_distr, state_abstr, opt_size_limit=100, inc_self_loops=False):
+def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, max_options=100):
     '''
     Args:
         mdp_distr (MDPDistribution)
         state_abstr (StateAbstraction)
+        incl_self_loops (bool)
+        max_options (int)
 
     Returns:
         (ActionAbstraction)
@@ -49,7 +52,7 @@ def get_directed_options_for_sa(mdp_distr, state_abstr, opt_size_limit=100, inc_
                 options.append(o)
                 state_pairs.append((s_a, s_a_prime))
 
-            elif inc_self_loops:
+            elif incl_self_loops:
                 # Self loop.
                 init_predicate = EqPredicate(y=s_a, func=state_abstr.phi)
                 term_predicate = NeqPredicate(y=s_a, func=state_abstr.phi) # Terminate in any other abstract state.
@@ -60,7 +63,7 @@ def get_directed_options_for_sa(mdp_distr, state_abstr, opt_size_limit=100, inc_
                 options.append(o)
                 state_pairs.append((s_a, s_a_prime))
 
-    if len(options) > max(state_abstr.get_num_ground_states() / 3.0, opt_size_limit):
+    if len(options) > max_options: #max(state_abstr.get_num_ground_states() / 3.0, max_options):
         print "\tToo many options (" + str(len(options)) + "). Increasing epsilon and continuing.\n"
         return False
 
@@ -91,13 +94,20 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
         o_2 goes from s_A1 *through s_A2 to s_A3, then we get rid of o_2.
     '''
 
+
     good_options = []
     bad_options = []
 
-    transition_func = mdp_distr.get_all_mdps()[0].get_transition_func()
+    first_mdp = mdp_distr.get_all_mdps()[0]
+
+    if isinstance(first_mdp, GridWorldMDP):
+        original = first_mdp.slip_prob
+        first_mdp.slip_prob = 0.0
+
+    transition_func = first_mdp.get_transition_func()
 
     for i, o in enumerate(options):
-        # print "Option", i, "of", len(options)
+        print "Option", i, "of", len(options)
         pre_abs_state, post_abs_state = state_pairs[i]
 
         ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
@@ -116,10 +126,13 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
             return s_prime
 
         if pre_abs_state == post_abs_state:
+
+            mini_mdp_init_states = defaultdict(list)
+
             # Self loop. Make an option per goal in the cluster.
             goal_mdps = []
             goal_state_action_pairs = defaultdict(list)
-            for mdp in mdp_distr.get_all_mdps():
+            for i, mdp in enumerate(mdp_distr.get_all_mdps()):
                 add = False
     
                 # Is there a goal for this MDP in one of the ground states.
@@ -127,25 +140,48 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                     for a in mdp.get_actions():
                         if mdp.get_reward_func()(s_g, a) > 0.0 and a not in goal_state_action_pairs[s_g]:
                             goal_state_action_pairs[s_g].append(a)
+                            goals = tuple(mdp.get_goal_locs())
+                            mini_mdp_init_states[goals].append(s_g)
                             add = True
+
                 if add:
                     goal_mdps.append(mdp)
 
             for goal_mdp in goal_mdps:
+
+                def goal_new_trans_func(s, a):
+                    original = s.is_terminal()
+                    s.set_terminal(s not in ground_term_states or original)
+                    s_prime = goal_mdp.get_transition_func()(s,a)
+                    s.set_terminal(original)
+                    return s_prime
+
+                cluster_init_state = random.choice(mini_mdp_init_states[tuple(goal_mdp.get_goal_locs())])
+
                 # Make a new 
                 mini_mdp = MDP(actions=goal_mdp.get_actions(),
-                        init_state=rand_init_g_state,
-                        transition_func=goal_mdp.get_transition_func(),
+                        init_state=cluster_init_state,
+                        transition_func=goal_new_trans_func,
                         reward_func=goal_mdp.get_reward_func())
 
+
                 o_policy, mini_mdp_vi = _make_mini_mdp_option_policy(mini_mdp, state_abstr)
+
+                # print goal_mdp.get_goal_locs()
+                # for s_g in state_abstr.get_ground_states():
+                #     print s_g, o_policy(s_g)
+
                 new_option = Option(o.init_predicate, o.term_predicate, o_policy)
+                new_option.set_name(str(ground_init_states[0]) + "-sl")
                 good_options.append(new_option)
+
+                if isinstance(goal_mdp, GridWorldMDP):
+                    goal_mdp.slip_prob = original
 
             continue
         else:
             # This is a non-self looping option.
-            mini_mdp = MDP(actions=mdp.get_actions(),
+            mini_mdp = MDP(actions=mdp_distr.get_actions(),
                             init_state=rand_init_g_state,
                             transition_func=new_trans_func,
                             reward_func=_directed_option_reward_lambda)
@@ -171,6 +207,9 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                     # The option overlaps, don't include it.
                     bad_options.append(o)
 
+    if isinstance(first_mdp, GridWorldMDP):
+        first_mdp.slip_prob = original
+
     return good_options
 
 def _make_mini_mdp_option_policy(mini_mdp, state_abstr):
@@ -184,7 +223,8 @@ def _make_mini_mdp_option_policy(mini_mdp, state_abstr):
         '''
         # Solve the MDP defined by the terminal abstract state.
         mini_mdp_vi = ValueIteration(mini_mdp, delta=0.0001, max_iterations=5000)
-        mini_mdp_vi.run_vi()
+        iters, val = mini_mdp_vi.run_vi()
+
         o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, state_abstr.get_ground_states())
         o_policy = PolicyFromDict(o_policy_dict)
 
