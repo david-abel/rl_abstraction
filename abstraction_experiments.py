@@ -227,6 +227,8 @@ def main():
     # Grab experiment params.
     mdp_class, task_samples, steps, grid_dim, x_axis_num_options, agent_class_str, max_options = parse_args()
 
+    gamma = 0.9
+
     # ========================
     # === Make Environment ===
     # ========================
@@ -234,7 +236,7 @@ def main():
     max_option_steps = 50 if x_axis_num_options else 0
     environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=grid_dim) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
     actions = environment.get_actions()
-    gamma = environment.get_gamma()
+    environment.set_gamma(gamma)
 
     # Indicator functions.
     v_indic = ind_funcs._v_approx_indicator
