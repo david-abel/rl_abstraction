@@ -217,14 +217,15 @@ def parse_args():
     parser.add_argument("-grid_dim", type = int, default = 11, nargs = '?', help = "Dimensions of the grid world.")
     parser.add_argument("-track_options", type = bool, default = False, nargs = '?', help = "Plot in terms of option executions (if True).")
     parser.add_argument("-agent", type = str, default='ql', nargs = '?', help = "Specify agent class (one of {'ql', 'rmax'})..")
+    parser.add_argument("-max_options", type = int, default=50, nargs = '?', help = "Specify maximum number of options.")
     args = parser.parse_args()
 
-    return args.task, args.samples, args.steps, args.grid_dim, bool(args.track_options), args.agent
+    return args.task, args.samples, args.steps, args.grid_dim, bool(args.track_options), args.agent, args.max_options
 
 def main():
 
     # Grab experiment params.
-    mdp_class, task_samples, steps, grid_dim, x_axis_num_options, agent_class_str = parse_args()
+    mdp_class, task_samples, steps, grid_dim, x_axis_num_options, agent_class_str, max_options = parse_args()
 
     # ========================
     # === Make Environment ===
@@ -245,13 +246,12 @@ def main():
     # =========================
 
         # Directed Variants.
-    max_options = 50
     q_directed_sa, q_directed_aa = get_abstractions(environment, q_indic, directed=True, max_options=max_options)
     v_directed_sa, v_directed_aa = get_abstractions(environment, v_indic, directed=True, max_options=max_options)
     rand_directed_sa, rand_directed_aa = get_abstractions(environment, rand_indic, directed=True, max_options=max_options)
 
         # Policy Blocks.
-    pblocks_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment, incl_prim_actions=True)
+    pblocks_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment, incl_prim_actions=True, num_options=max_options)
 
         # Identity action abstraction.
     identity_sa, identity_aa = get_sa(environment, default=True), get_aa(environment, default=True)
