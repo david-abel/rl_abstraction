@@ -140,7 +140,10 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                     for a in mdp.get_actions():
                         if mdp.get_reward_func()(s_g, a) > 0.0 and a not in goal_state_action_pairs[s_g]:
                             goal_state_action_pairs[s_g].append(a)
-                            goals = tuple(mdp.get_goal_locs())
+                            if isinstance(mdp, GridWorldMDP):
+                                goals = tuple(mdp.get_goal_locs())
+                            else:
+                                goals = tuple(s_g)
                             mini_mdp_init_states[goals].append(s_g)
                             add = True
 
@@ -156,7 +159,10 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                     s.set_terminal(original)
                     return s_prime
 
-                cluster_init_state = random.choice(mini_mdp_init_states[tuple(goal_mdp.get_goal_locs())])
+                if isinstance(goal_mdp, GridWorldMDP):
+                    cluster_init_state = random.choice(mini_mdp_init_states[tuple(goal_mdp.get_goal_locs())])
+                else:
+                    cluster_init_state = random.choice(ground_init_states)
 
                 # Make a new 
                 mini_mdp = MDP(actions=goal_mdp.get_actions(),

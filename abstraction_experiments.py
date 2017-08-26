@@ -12,6 +12,7 @@ from simple_rl.utils import make_mdp
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
 from simple_rl.planning.ValueIterationClass import ValueIteration
+from simple_rl.tasks import TaxiOOMDP
 from simple_rl.mdp import State, MDPDistribution
 import AbstractionWrapperClass as AWC
 from state_abs.StateAbstractionClass import StateAbstraction
@@ -106,10 +107,10 @@ def compare_planning_abstr(mdp, abstr_mdp):
 
     return iters, abstr_iters
 
-def get_directed_option_sa_pair(mdp, indic_func, max_options=100):
+def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
     '''
     Args:
-        mdp (MDP) or (MDPDistribution)
+        mdp_distr (MDPDistribution)
         indic_func
         max_options (int)
 
@@ -121,19 +122,22 @@ def get_directed_option_sa_pair(mdp, indic_func, max_options=100):
     found_small_option_set = False
     sa_epsilon, sa_eps_incr = 0.00, 0.01
 
+    if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
+        sa_epsilon = 0.07
+
     while True:
         print "Epsilon:", sa_epsilon
 
         # Compute the SA-AA pair.
         # NOTE: Track act_opt_pr is TRUE
-        sa = get_sa(mdp, indic_func=indic_func, default=False, epsilon=sa_epsilon, track_act_opt_pr=False)
+        sa = get_sa(mdp_distr, indic_func=indic_func, default=False, epsilon=sa_epsilon, track_act_opt_pr=False)
 
         if sa.get_num_abstr_states() == 1:
             # We can't have only 1 abstract state.
             print "Error: only 1 abstract state."
             quit()
 
-        aa = get_directed_aa(mdp, sa, max_options=max_options)
+        aa = get_directed_aa(mdp_distr, sa, max_options=max_options)
         if aa:
             # If this is a good aa, we're done.
             break
@@ -214,18 +218,20 @@ def parse_args():
     parser.add_argument("-task", type = str, default = "octo", nargs = '?', help = "Choose the mdp type (one of {octo, hall, grid, taxi, four_room}).")
     parser.add_argument("-samples", type = int, default = 500, nargs = '?', help = "Number of samples from the MDP Distribution.")
     parser.add_argument("-steps", type = int, default = 100, nargs = '?', help = "Number of steps for the experiment.")
+    parser.add_argument("-episodes", type = int, default = 1, nargs = '?', help = "Number of episodes for the experiment.")
     parser.add_argument("-grid_dim", type = int, default = 11, nargs = '?', help = "Dimensions of the grid world.")
     parser.add_argument("-track_options", type = bool, default = False, nargs = '?', help = "Plot in terms of option executions (if True).")
     parser.add_argument("-agent", type = str, default='ql', nargs = '?', help = "Specify agent class (one of {'ql', 'rmax'})..")
     parser.add_argument("-max_options", type = int, default=50, nargs = '?', help = "Specify maximum number of options.")
+    parser.add_argument("-exp_type", type = str, default="core", nargs = '?', help = "Choose which experiment we're running. One of {core, combo}.")
     args = parser.parse_args()
 
-    return args.task, args.samples, args.steps, args.grid_dim, bool(args.track_options), args.agent, args.max_options
+    return args.task, args.samples, args.episodes, args.steps, args.grid_dim, bool(args.track_options), args.agent, args.max_options, args.exp_type
 
 def main():
 
     # Grab experiment params.
-    mdp_class, task_samples, steps, grid_dim, x_axis_num_options, agent_class_str, max_options = parse_args()
+    mdp_class, task_samples, episodes, steps, grid_dim, x_axis_num_options, agent_class_str, max_options, exp_type = parse_args()
 
     gamma = 0.9
 
@@ -248,15 +254,15 @@ def main():
     # =========================
 
         # Directed Variants.
-    q_directed_sa, q_directed_aa = get_abstractions(environment, q_indic, directed=True, max_options=max_options)
     v_directed_sa, v_directed_aa = get_abstractions(environment, v_indic, directed=True, max_options=max_options)
-    rand_directed_sa, rand_directed_aa = get_abstractions(environment, rand_indic, directed=True, max_options=max_options)
-
-        # Policy Blocks.
-    pblocks_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment, incl_prim_actions=True, num_options=max_options)
-
         # Identity action abstraction.
     identity_sa, identity_aa = get_sa(environment, default=True), get_aa(environment, default=True)
+
+    if exp_type == "core":
+        # Core only abstraction types.
+        q_directed_sa, q_directed_aa = get_abstractions(environment, q_indic, directed=True, max_options=max_options)
+        rand_directed_sa, rand_directed_aa = get_abstractions(environment, rand_indic, directed=True, max_options=max_options)
+        pblocks_sa, pblocks_aa = get_sa(environment, default=True), action_abs.aa_baselines.get_policy_blocks_aa(environment, incl_prim_actions=True, num_options=max_options)
 
     # ===================
     # === Make Agents ===
@@ -268,16 +274,19 @@ def main():
     baseline_agent = agent_class(actions, gamma=gamma)
 
     # Abstraction Extensions.
-    qabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=q_directed_sa, action_abstr=q_directed_aa, name_ext="q-sa+aa")
+    agents = []
     vabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=v_directed_aa, name_ext="v-sa+aa")
-    rabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=rand_directed_sa, action_abstr=rand_directed_aa, name_ext="rand-sa+aa")
-    aa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=identity_sa, action_abstr=v_directed_aa, name_ext="aa")
-    sa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=identity_aa, name_ext="sa")
-    pblocks_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=pblocks_sa, action_abstr=pblocks_aa, name_ext="pblocks")
-    core_agents = [vabs_agent_directed, qabs_agent_directed, rabs_agent_directed, pblocks_agent, baseline_agent]
-
-    # table_agents = [vabs_agent_directed, sa_agent, aa_agent, baseline_agent]
-    # agents = [qabs_ql_agent_directed]
+    if exp_type == "core":
+        # Core only agents.
+        qabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=q_directed_sa, action_abstr=q_directed_aa, name_ext="q-sa+aa")
+        rabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=rand_directed_sa, action_abstr=rand_directed_aa, name_ext="rand-sa+aa")
+        pblocks_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=pblocks_sa, action_abstr=pblocks_aa, name_ext="pblocks")
+        agents = [vabs_agent_directed, qabs_agent_directed, rabs_agent_directed, pblocks_agent, baseline_agent]
+    elif exp_type == "combo":
+        # Combo only agents.
+        aa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=identity_sa, action_abstr=v_directed_aa, name_ext="aa")
+        sa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=identity_aa, name_ext="sa")
+        agents = [vabs_agent_directed, sa_agent, aa_agent, baseline_agent]
 
     # if mdp_class == "four_room":
     #     # Add handmade four room if needed.
@@ -287,9 +296,8 @@ def main():
 
     # Run experiments.
     if multi_task:
-        # This doesn't make sense... Need some way to terminate.
         steps = 999999 if x_axis_num_options else steps
-        run_agents_multi_task(core_agents, environment, task_samples=task_samples, steps=steps, episodes=1, reset_at_terminal=True)
+        run_agents_multi_task(agents, environment, task_samples=task_samples, steps=steps, episodes=episodes, reset_at_terminal=True)
     else:
         run_agents_on_mdp(agents, environment, instances=20, episodes=100, reset_at_terminal=True)
 
