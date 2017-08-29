@@ -94,7 +94,6 @@ def make_multitask_sa(mdp_distr, state_class=State, indic_func=ind_funcs._q_eps_
         sa = make_singletask_sa(mdp, indic_func, state_class, epsilon, aa_single_act=aa_single_act, prob_of_mdp=mdp_distr.get_prob_of_mdp(mdp), track_act_opt_pr=track_act_opt_pr)
         sa_list += [sa]
 
-
     return merge_state_abs(sa_list, track_act_opt_pr=track_act_opt_pr)
 
 def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=False, prob_of_mdp=1.0, track_act_opt_pr=False):

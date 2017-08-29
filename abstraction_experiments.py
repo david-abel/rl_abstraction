@@ -123,7 +123,7 @@ def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
     sa_epsilon, sa_eps_incr = 0.00, 0.01
 
     if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
-        sa_epsilon = 0.07
+        sa_epsilon = 0.02
 
     while True:
         print "Epsilon:", sa_epsilon
