@@ -7,10 +7,14 @@ class PolicyFromDict(Policy):
 		self.policy_dict = policy_dict
 
 	def get_action(self, state):
+		if state not in self.policy_dict.keys():
+			print "(PolicyFromDict) Abstraction Error:", state, "never seen before."
+			quit()
+
 		return self.policy_dict[state]
 
 def make_dict_from_lambda(policy_func, state_list):
-	policy_dict = defaultdict(str)
+	policy_dict = {} #defaultdict(str)
 	for s in state_list:
 		policy_dict[s] = policy_func(s)
 

@@ -311,14 +311,13 @@ def main():
     is_sa = parse_args()
 
     # Make single/multi task environment.
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=5) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=11) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
     actions = environment.get_actions()
     gamma = environment.get_actions()
 
-    
-
     # Grab SA and AA for each abstraction agent.   
-    directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_approx_indicator, directed=True)
+    # directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_approx_indicator, directed=True, max_options=30)
+    directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_disc_approx_indicator, directed=True, max_options=100)
 
     # regular_sa, regular_aa = directed_sa, get_aa(environment, default=True)
 

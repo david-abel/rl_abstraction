@@ -122,6 +122,8 @@ def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=
     sa = StateAbstraction(state_class=state_class, track_act_opt_pr=track_act_opt_pr)
     clusters = defaultdict(list)
     num_states = len(vi.get_states())
+
+
     actions = mdp.get_actions()
     # Find state pairs that satisfy the condition.
     for i, state_x in enumerate(vi.get_states()):

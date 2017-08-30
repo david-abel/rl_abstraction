@@ -48,7 +48,6 @@ class ActionAbstraction(object):
                 agent.actions = active_options
             
             abstr_action = agent.act(abstr_state, reward)
-
             self.set_option_executing(abstr_action)
 
             return self.abs_to_ground(ground_state, abstr_action)

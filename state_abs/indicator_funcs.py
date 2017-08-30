@@ -1,5 +1,6 @@
 import random
 from simple_rl.tasks import FourRoomMDP
+from decimal import Decimal
 
 def _four_rooms(state_x, state_y, vi, actions, epsilon=0.0):
     if not isinstance(vi.mdp, FourRoomMDP):
@@ -60,3 +61,42 @@ def _q_eps_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
             return False
 
     return True
+
+def _q_disc_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
+    '''
+    Args:
+        state_x (State)
+        state_y (State)
+        vi (ValueIteration)
+        actions (list)
+
+    Returns:
+        (bool): true iff:
+    '''
+    v_max = 1 / (1 - 0.9)
+
+
+def _v_disc_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
+    '''
+    Args:
+        state_x (State)
+        state_y (State)
+        vi (ValueIteration)
+        actions (list)
+
+    Returns:
+        (bool): true iff:
+    '''
+    v_max = 1 / (1 - 0.9)
+
+    if epsilon == 0.0:
+        return _v_approx_indicator(state_x, state_y, vi, actions, epsilon=0)
+
+    v_x, v_y = vi.get_value(state_x), vi.get_value(state_y)
+
+    bucket_x = int( (v_x / v_max) / epsilon)
+    bucket_y = int( (v_y / v_max) / epsilon)
+
+    return bucket_x == bucket_y
+
+    

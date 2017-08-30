@@ -120,12 +120,12 @@ def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
 
      # Get Abstractions by iterating over epsilons.
     found_small_option_set = False
-    sa_epsilon, sa_eps_incr = 0.00, 0.01
+    sa_epsilon, sa_eps_incr = 0.0, 0.01
 
     if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
         sa_epsilon = 0.02
 
-    while True:
+    while sa_epsilon <= 1.0 / (1 - mdp_distr.get_gamma()):
         print "Epsilon:", sa_epsilon
 
         # Compute the SA-AA pair.
@@ -134,7 +134,7 @@ def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
 
         if sa.get_num_abstr_states() == 1:
             # We can't have only 1 abstract state.
-            print "Error: only 1 abstract state."
+            print "Abstraction Error: only 1 abstract state."
             quit()
 
         aa = get_directed_aa(mdp_distr, sa, max_options=max_options)
@@ -247,6 +247,7 @@ def main():
     # Indicator functions.
     v_indic = ind_funcs._v_approx_indicator
     q_indic = ind_funcs._q_eps_approx_indicator
+    v_disc_indic = ind_funcs._v_disc_approx_indicator
     rand_indic = ind_funcs._random
 
     # =========================
@@ -254,7 +255,9 @@ def main():
     # =========================
 
         # Directed Variants.
-    v_directed_sa, v_directed_aa = get_abstractions(environment, v_indic, directed=True, max_options=max_options)
+    v_directed_sa, v_directed_aa = get_abstractions(environment, v_disc_indic, directed=True, max_options=max_options)
+    # v_directed_sa, v_directed_aa = get_abstractions(environment, v_indic, directed=True, max_options=max_options)
+
         # Identity action abstraction.
     identity_sa, identity_aa = get_sa(environment, default=True), get_aa(environment, default=True)
 
@@ -273,9 +276,13 @@ def main():
     rand_agent = RandomAgent(actions)
     baseline_agent = agent_class(actions, gamma=gamma)
 
+    if mdp_class == "pblocks":
+        baseline_agent.epsilon = 0.01
+
     # Abstraction Extensions.
     agents = []
     vabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=v_directed_aa, name_ext="v-sa+aa")
+
     if exp_type == "core":
         # Core only agents.
         qabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=q_directed_sa, action_abstr=q_directed_aa, name_ext="q-sa+aa")
@@ -287,12 +294,6 @@ def main():
         aa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=identity_sa, action_abstr=v_directed_aa, name_ext="aa")
         sa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=identity_aa, name_ext="sa")
         agents = [vabs_agent_directed, sa_agent, aa_agent, baseline_agent]
-
-    # if mdp_class == "four_room":
-    #     # Add handmade four room if needed.
-    #     hand_directed_sa, hand_directed_aa = get_abstractions(environment, ind_funcs._four_rooms, directed=True)
-    #     habs_ql_agent_directed = AWC.AbstractionWrapper(agent_class, actions, state_abstr=hand_directed_sa, action_abstr=hand_directed_aa, name_ext="hand-sa+aa")
-    #     agents.append(habs_ql_agent_directed)
 
     # Run experiments.
     if multi_task:

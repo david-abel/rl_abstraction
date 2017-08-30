@@ -117,6 +117,8 @@ class AbstractionWrapper(Agent):
         abstr_state = self.state_abstr.phi(ground_state)
         ground_action = self.action_abstr.act(self.agent, abstr_state, ground_state, reward)
 
+        # print "ground_action", ground_action, type(ground_action), len(ground_action)
+
         return ground_action
 
     def reset(self):

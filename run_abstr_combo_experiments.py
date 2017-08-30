@@ -47,23 +47,20 @@ def main():
 		step_multipler = 1
 
 	# Hall.
-	# spawn_subproc(task="hall", samples=100, episodes=episodes, steps=30 * step_multipler,  grid_dim=10, max_options=100)
+	spawn_subproc(task="hall", samples=100, episodes=episodes, steps=30 * step_multipler,  grid_dim=10, max_options=20)
+
+	# Octo Grid.
+	spawn_subproc(task="octo", samples=500, episodes=episodes, steps=50 * step_multipler, max_options=40)
+
+	# Four rooms.
+	spawn_subproc(task="four_room", samples=100, episodes=episodes, steps=50 * step_multipler,  grid_dim=15)
 
 	# Grid random init.
-	spawn_subproc(task="taxi", samples=10, episodes=episodes, steps=50 * step_multipler, max_options=150)
-
-
-	# # Octo Grid.
-	# spawn_subproc(task="octo", samples=1000, episodes=episodes, steps=50 * step_multipler)
-
-	# # Four rooms.
-	# spawn_subproc(task="four_room", samples=100, episodes=episodes, steps=100 * step_multipler,  grid_dim=15)
+	spawn_subproc(task="whirlpool", samples=50, episodes=episodes, steps=50 * step_multipler, grid_dim=11, max_options=100)
 
 	# # Ice Rink.
 	# spawn_subproc(task="icerink", samples=500, episodes=episodes, steps=100 * step_multipler,  grid_dim=20, max_options=150)
 
-	# Rock Climb.
-	# spawn_subproc(task="rock_climb", samples=5, episodes=episodes, steps=100 * step_multipler,  grid_dim=20, max_options=150)
 
 if __name__ == "__main__":
 	main()
