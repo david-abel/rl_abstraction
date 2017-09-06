@@ -7,7 +7,7 @@ from simple_rl.mdp.MDPClass import MDP
 
 class StateAbstraction(object):
 
-    def __init__(self, phi={}, state_class=State, track_act_opt_pr=False):
+    def __init__(self, phi, state_class=State, track_act_opt_pr=False):
         '''
         Args:
             phi (dict)
@@ -82,29 +82,6 @@ class StateAbstraction(object):
         for state in list_of_ground_states:
             self._phi[state] = abstract_value
 
-    def make_abstr_mdp(self, mdp):
-        '''
-        Args:
-            mdp (MDP)
-
-        Returns:
-            mdp (MDP): The abstracted MDP via self.phi.
-        '''
-        abstr_actions = mdp.get_actions()
-        abstr_init_state = self.phi(mdp.get_init_state())
-        ground_t, ground_r = mdp.get_transition_func(), mdp.get_reward_func()
-        abstr_trans_func = lambda s, a: self.phi(ground_t(s, a))
-        abstr_reward_func = lambda s, a: ground_r(s, a)
-        abstr_gamma = mdp.get_gamma()
-
-        abstr_mdp = MDP(actions=mdp.get_actions(),
-                        transition_func=abstr_trans_func,
-                        reward_func=abstr_reward_func,
-                        init_state=abstr_init_state,
-                        gamma=abstr_gamma)
-
-        return abstr_mdp
-
     def get_ground_states_in_abs_state(self, abs_state):
         '''
         Args:
@@ -137,13 +114,15 @@ class StateAbstraction(object):
 
     def __add__(self, other_abs):
         '''
-        FIX
+        Args:
+            other_abs
         '''
         merged_state_abs = {}
 
         # Move the phi into a cluster dictionary.
         cluster_dict = defaultdict(list)
         for k, v in self._phi.iteritems():
+            # Cluster dict: v is abstract, key is ground.
             cluster_dict[v].append(k)
 
         # Move the phi into a cluster dictionary.
@@ -151,15 +130,19 @@ class StateAbstraction(object):
         for k, v in other_abs._phi.iteritems():
             other_cluster_dict[v].append(k)
 
-        for state in self._phi.keys():
+        for ground_state in self._phi.keys():
             # Get the two clusters associated with a state.
-            states_cluster = self._phi[state]
-            states_other_cluster = other_abs._phi[state]
+            states_cluster = self._phi[ground_state]
+            if ground_state in other_abs._phi.keys():
+                # Only add if it's in both clusters.
+                states_other_cluster = other_abs._phi[ground_state]
+            else:
+                continue
 
-            for s in cluster_dict[states_cluster]:
-                if s in other_cluster_dict[states_other_cluster]:
-                    # Every state that's in both clusters, merge.
-                    merged_state_abs[s] = states_cluster
+            for s_g in cluster_dict[states_cluster]:
+                if s_g in other_cluster_dict[states_other_cluster]:
+                    # Every ground state that's in both clusters, merge.
+                    merged_state_abs[s_g] = states_cluster
 
         new_sa = StateAbstraction(phi=merged_state_abs, track_act_opt_pr=self.track_act_opt_pr)
 
@@ -168,13 +151,11 @@ class StateAbstraction(object):
         other_opt_dict = other_abs.get_act_opt_dict()
 
         # Build the new action optimality dictionary.
-
         if self.track_act_opt_pr:
             # If we're tracking the action's probability.
             new_dict = defaultdict(lambda:defaultdict(float))
             for s_g in self.get_ground_states():
                 for a_g in opt_dict[s_g].keys() + other_opt_dict[s_g].keys():
-                    # print opt_dict[s_g][a_g], type(opt_dict[s_g][a_g])
                     new_dict[s_g][a_g] = opt_dict[s_g][a_g] + other_opt_dict[s_g][a_g]
         else:
             new_dict = defaultdict(set)

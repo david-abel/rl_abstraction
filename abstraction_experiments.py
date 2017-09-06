@@ -6,7 +6,6 @@ from collections import defaultdict
 import os
 import argparse
 
-
 # Other imports.
 from simple_rl.utils import make_mdp
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
@@ -14,7 +13,7 @@ from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
 from simple_rl.planning.ValueIterationClass import ValueIteration
 from simple_rl.tasks import TaxiOOMDP
 from simple_rl.mdp import State, MDPDistribution
-import AbstractionWrapperClass as AWC
+from AbstractionWrapperClass import AbstractionWrapper
 from state_abs.StateAbstractionClass import StateAbstraction
 from action_abs.ActionAbstractionClass import ActionAbstraction
 import state_abs
@@ -40,7 +39,7 @@ def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0, track_act_opt
     '''
 
     if default:
-        return StateAbstraction()
+        return StateAbstraction(phi={})
 
     state_abstr = state_abs.sa_helpers.make_sa(mdp_distr, indic_func=indic_func, state_class=State, epsilon=epsilon, track_act_opt_pr=track_act_opt_pr)
 
@@ -124,6 +123,12 @@ def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
 
     if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
         sa_epsilon = 0.02
+
+    if "whirlpool" in str(mdp_distr.get_all_mdps()[0]):
+        sa_eps_incr = 0.002
+
+    if "color" in str(mdp_distr.get_all_mdps()[0]):
+        sa_epsilon = 0.00
 
     while sa_epsilon <= 1.0 / (1 - mdp_distr.get_gamma()):
         print "Epsilon:", sa_epsilon
@@ -281,18 +286,18 @@ def main():
 
     # Abstraction Extensions.
     agents = []
-    vabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=v_directed_aa, name_ext="v-sa+aa")
+    vabs_agent_directed = AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=v_directed_aa, name_ext="v-sa+aa")
 
     if exp_type == "core":
         # Core only agents.
-        qabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=q_directed_sa, action_abstr=q_directed_aa, name_ext="q-sa+aa")
-        rabs_agent_directed = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=rand_directed_sa, action_abstr=rand_directed_aa, name_ext="rand-sa+aa")
-        pblocks_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=pblocks_sa, action_abstr=pblocks_aa, name_ext="pblocks")
+        qabs_agent_directed = AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=q_directed_sa, action_abstr=q_directed_aa, name_ext="q-sa+aa")
+        rabs_agent_directed = AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=rand_directed_sa, action_abstr=rand_directed_aa, name_ext="rand-sa+aa")
+        pblocks_agent = AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=pblocks_sa, action_abstr=pblocks_aa, name_ext="pblocks")
         agents = [vabs_agent_directed, qabs_agent_directed, rabs_agent_directed, pblocks_agent, baseline_agent]
     elif exp_type == "combo":
         # Combo only agents.
-        aa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=identity_sa, action_abstr=v_directed_aa, name_ext="aa")
-        sa_agent = AWC.AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=identity_aa, name_ext="sa")
+        aa_agent = AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=identity_sa, action_abstr=v_directed_aa, name_ext="aa")
+        sa_agent = AbstractionWrapper(agent_class, actions, str(environment), max_option_steps=max_option_steps, state_abstr=v_directed_sa, action_abstr=identity_aa, name_ext="sa")
         agents = [vabs_agent_directed, sa_agent, aa_agent, baseline_agent]
 
     # Run experiments.
@@ -300,7 +305,7 @@ def main():
         steps = 999999 if x_axis_num_options else steps
         run_agents_multi_task(agents, environment, task_samples=task_samples, steps=steps, episodes=episodes, reset_at_terminal=True)
     else:
-        run_agents_on_mdp(agents, environment, instances=20, episodes=100, reset_at_terminal=True)
+        run_agents_on_mdp(agents, environment, instances=20, episodes=30, reset_at_terminal=True)
 
 
 if __name__ == "__main__":

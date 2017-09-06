@@ -27,6 +27,7 @@ class AbstractionWrapper(Agent):
             state_abstr (ActionAbstraction)
             name_ext (str)
         '''
+
         # Setup the abstracted agent.
         self._create_default_abstractions(actions, state_abstr, action_abstr)
         self.agent = SubAgentClass(actions=self.action_abstr.get_actions())
@@ -115,6 +116,9 @@ class AbstractionWrapper(Agent):
             self._record_experience(ground_state, reward)
 
         abstr_state = self.state_abstr.phi(ground_state)
+        
+        # print ground_state, abstr_state, hash(ground_state)
+
         ground_action = self.action_abstr.act(self.agent, abstr_state, ground_state, reward)
 
         # print "ground_action", ground_action, type(ground_action), len(ground_action)
