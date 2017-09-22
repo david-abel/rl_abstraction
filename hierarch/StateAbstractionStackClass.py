@@ -31,6 +31,12 @@ class StateAbstractionStack(StateAbstraction):
     def get_num_levels(self):
         return len(self.list_of_phi)
 
+    def get_level(self):
+        return self.level
+
+    def set_level_to_max(self):
+        self.level = self.get_num_levels()
+
     def set_level(self, new_level):
         if new_level > self.get_num_levels() or new_level < 0:
             print "StateAbstractionStack Error: given level (" + str(new_level) + ") is invalid. Must be between" + \
@@ -113,6 +119,9 @@ class StateAbstractionStack(StateAbstraction):
 
     def add_phi(self, new_phi):
         self.list_of_phi.append(new_phi)
+
+    def remove_last_phi(self):
+        self.list_of_phi = self.list_of_phi[:-1]
 
     def print_state_space_sizes(self):
         print "State Space Sizes:"

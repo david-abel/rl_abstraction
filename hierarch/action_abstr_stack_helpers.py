@@ -13,7 +13,7 @@ from action_abs import aa_helpers
 from simple_rl.utils import make_mdp
 
 
-def make_sa_aa_stack(mdp_distr, max_num_levels=3):
+def make_random_sa_diropt_aa_stack(mdp_distr, max_num_levels=3):
     '''
     Args:
         mdp_distr (MDPDistribution)
@@ -25,9 +25,7 @@ def make_sa_aa_stack(mdp_distr, max_num_levels=3):
             2. ActionAbstraction
     '''
 
-
     # Get Abstractions by iterating over compression ratio.
-    found_small_option_set = False
     cluster_size_ratio, ratio_decr = 0.3, 0.05
 
     while cluster_size_ratio > 0.001:
@@ -46,8 +44,6 @@ def make_sa_aa_stack(mdp_distr, max_num_levels=3):
             continue
         else:
             break
-
-
 
     return sa_stack, aa_stack
 
@@ -88,7 +84,7 @@ def main():
     mdp_class = "four_room"
     environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=10)
 
-    make_sa_aa_stack(environment, max_num_levels=3)
+    make_random_sa_diropt_aa_stack(environment, max_num_levels=3)
 
 if __name__ == "__main__":
     main()

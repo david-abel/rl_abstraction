@@ -5,6 +5,7 @@ from simple_rl.agents import RandomAgent, QLearnerAgent
 from simple_rl.run_experiments import run_agents_multi_task
 from HierarchyAgentClass import HierarchyAgent
 import action_abstr_stack_helpers as aa_stack_h
+import hierarchy_helpers
 
 def main():
 
@@ -18,8 +19,8 @@ def main():
     # ==========================
     # === Make SA, AA Stacks ===
     # ==========================
-    sa_stack, aa_stack = aa_stack_h.make_sa_aa_stack(environment, max_num_levels=3)
-
+    # sa_stack, aa_stack = aa_stack_h.make_random_sa_diropt_aa_stack(environment, max_num_levels=3)
+    sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=1)
 
     # Debug.
     print "\n" + ("=" * 30)
@@ -44,7 +45,7 @@ def main():
     # === Run Experiment ===
     # ======================
     agents = [l0_hierarch_agent, l1_hierarch_agent, rand_agent, baseline_agent]
-    run_agents_multi_task(agents, environment, task_samples=25, steps=200, episodes=1, reset_at_terminal=True)
+    run_agents_multi_task(agents, environment, task_samples=500, steps=2000, episodes=1, reset_at_terminal=True)
 
 
 if __name__ == "__main__":

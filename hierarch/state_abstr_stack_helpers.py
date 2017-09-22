@@ -10,23 +10,15 @@ from simple_rl.planning.ValueIterationClass import ValueIteration
 parent_dir = path.dirname(path.dirname(path.abspath(__file__)))
 sys.path.append(parent_dir)
 from state_abs.StateAbstractionClass import StateAbstraction
+from state_abs import sa_helpers
 from StateAbstractionStackClass import StateAbstractionStack
+import make_abstr_mdp
+
+
 
 # ----------------------------------
 # -- Make State Abstraction Stack --
 # ----------------------------------
-
-def make_indicator_sa_stack(mdp_distr, indicator_func, cluster_size_ratio=0.5, max_num_levels=2):
-    '''
-    Args:
-        mdp_distr (MDPDistribution)
-        cluster_size_ratio (float): A float in (0,1) that determines the size of the abstract state space.
-        max_num_levels (int): Determines the _total_ number of levels in the hierarchy (includes ground).
-
-    Returns:
-        (StateAbstraction)
-    '''
-    pass
 
 def make_random_sa_stack(mdp_distr, cluster_size_ratio=0.5, max_num_levels=2):
     '''
@@ -55,10 +47,8 @@ def make_random_sa_stack(mdp_distr, cluster_size_ratio=0.5, max_num_levels=2):
             # The abstract is as small as it can get.
             break
 
-        # Make default state abstraction.
-        new_phi = {}
-
         # Add the mapping.
+        new_phi = {}
         for s in cur_state_space:
             new_phi[s] = HierarchyState(data=random.randint(1, max(int(cur_state_space_size * cluster_size_ratio), 1)), level=i + 1)
 
@@ -95,8 +85,6 @@ def main():
 
     sa_stack = make_random_sa_stack(environment, max_num_levels=5)
     sa_stack.print_state_space_sizes()
-
-
 
 
 if __name__ == "__main__":
