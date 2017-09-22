@@ -23,6 +23,9 @@ class ActionAbstraction(object):
             abstr_state (State)
             ground_state (State)
             reward (float)
+
+        Returns:
+            (str)
         '''
         if ground_state.is_terminal():
             return random.choice(self.prim_actions)
@@ -60,11 +63,7 @@ class ActionAbstraction(object):
         Returns:
             (list): Contains all active options.
         '''
-        result = []
-        for o in self.options:
-            if o.is_init_true(state):
-                result.append(o)
-        return result
+        return [o for o in self.options if o.is_init_true(state)]
 
     def _convert_to_options(self, action_list):
         '''

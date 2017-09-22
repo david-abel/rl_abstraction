@@ -63,15 +63,15 @@ def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, m
                 options.append(o)
                 state_pairs.append((s_a, s_a_prime))
 
-    if len(options) > max_options: #max(state_abstr.get_num_ground_states() / 3.0, max_options):
-        print "\tToo many options (" + str(len(options)) + "). Increasing epsilon and continuing.\n"
+    # Check max # options.
+    if len(options) > max_options:
+        print "\tToo many options (" + str(len(options)) + "). Increasing compression rate and continuing.\n"
         return False
-
     print "\tMade", len(options), "options (formed clique over S_A)."
-
     print "\tPruning...",
     sys.stdout.flush()
 
+    # Prune.
     pruned_option_set = _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr)
 
     print "done. Reduced to", len(pruned_option_set), "options."
@@ -93,11 +93,8 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
         Removes redundant options. That is, if o_1 goes from s_A1 to s_A2, and
         o_2 goes from s_A1 *through s_A2 to s_A3, then we get rid of o_2.
     '''
-
-
     good_options = []
     bad_options = []
-
     first_mdp = mdp_distr.get_all_mdps()[0]
 
     if isinstance(first_mdp, GridWorldMDP):
@@ -106,14 +103,17 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
 
     transition_func = first_mdp.get_transition_func()
 
+    # For each option.
     for i, o in enumerate(options):
         print "Option", i, "of", len(options)
         pre_abs_state, post_abs_state = state_pairs[i]
 
+        # Get init and terminal ground states.
         ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
         ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
         rand_init_g_state = random.choice(ground_init_states)
 
+        # R and T for Option Mini MDP.
         def _directed_option_reward_lambda(s, a):
             s_prime = transition_func(s,a)
             return int(s_prime in ground_term_states and not s in ground_term_states)
@@ -126,7 +126,7 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
             return s_prime
 
         if pre_abs_state == post_abs_state:
-
+            # Self loop.
             mini_mdp_init_states = defaultdict(list)
 
             # Self loop. Make an option per goal in the cluster.
@@ -150,6 +150,7 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                 if add:
                     goal_mdps.append(mdp)
 
+            # For each goal.
             for goal_mdp in goal_mdps:
 
                 def goal_new_trans_func(s, a):
@@ -173,10 +174,7 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
 
                 o_policy, mini_mdp_vi = _make_mini_mdp_option_policy(mini_mdp, state_abstr)
 
-                # print goal_mdp.get_goal_locs()
-                # for s_g in state_abstr.get_ground_states():
-                #     print s_g, o_policy(s_g)
-
+                # Make new option.
                 new_option = Option(o.init_predicate, o.term_predicate, o_policy)
                 new_option.set_name(str(ground_init_states[0]) + "-sl")
                 good_options.append(new_option)
@@ -207,7 +205,7 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                 if not _check_overlap(o, state_seq, options, bad_options):
                     # Give the option the new directed policy and name.
                     o.set_policy(o_policy)
-                    good_options.append(o)   
+                    good_options.append(o)
                     break
                 else:
                     # The option overlaps, don't include it.
