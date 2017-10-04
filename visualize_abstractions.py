@@ -307,11 +307,11 @@ def main():
 
     # MDP Setting.
     multi_task = True
-    mdp_class = "octo"
+    mdp_class = "whirlpool"
     is_sa = parse_args()
 
     # Make single/multi task environment.
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=11) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=7) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class)
     actions = environment.get_actions()
     gamma = environment.get_actions()
 

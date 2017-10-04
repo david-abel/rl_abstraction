@@ -19,15 +19,31 @@ class ActionAbstractionStack(ActionAbstraction):
         '''
         self.list_of_aa = list_of_aa
         self.level = level
+        self.prim_actions = prim_actions
+        ActionAbstraction.__init__(self, options=self.get_actions(level), prim_actions=prim_actions)
 
-        options = [] if len(self.list_of_aa) == 0 else self.list_of_aa[level].get_actions()
-        ActionAbstraction.__init__(self, options=options, prim_actions=prim_actions)
+    def get_level(self):
+        return self.level
 
     def get_num_levels(self):
         return len(self.list_of_aa)
 
     def get_aa_list(self):
         return self.list_of_aa
+    
+    def get_actions(self, level=None):
+        if level is None:
+            level = self.level
+        elif level == -1:
+            level = self.get_num_levels()
+        elif level == 0:
+            # If we're at level 0, let the agent act with primitives.
+            return self.prim_actions
+
+        return self.list_of_aa[level - 1].get_actions()
+
+    def set_level(self, new_level):
+        self.level = new_level
 
     def act(self, agent, state_abstr_stack, ground_state, reward, level=None):
         '''

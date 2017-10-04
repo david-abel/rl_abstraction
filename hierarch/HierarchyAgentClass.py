@@ -52,10 +52,15 @@ class HierarchyAgent(Agent):
         # Give the SA stack, ground state, and reward to the AA stack.
         return self.action_abstr_stack.act(self.agent, self.state_abstr_stack, ground_state, reward, level=self.cur_level)
 
+    def incr_level(self):
+        self.cur_level = min(self.cur_level + 1, self.sa_stack.get_num_levels())
+
+    def decr_level(self):
+        self.cur_level = min(self.cur_level - 1, 0)
+
     # -- Reset --
 
     def reset(self):
-        self.cur_level = 0
         self.agent.reset()
         for aa in self.action_abstr_stack.get_aa_list():
             aa.reset()

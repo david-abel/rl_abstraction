@@ -32,8 +32,7 @@ class ActionAbstraction(object):
 
         if self.is_next_step_continuing_option(ground_state) and random.random() > self.term_prob:
             # We're in an option and not terminating.
-            a = self.get_next_ground_action(ground_state)
-            return a
+            return self.get_next_ground_action(ground_state)
         else:
             # We're not in an option, check with agent.
             active_options = self.get_active_options(ground_state)

@@ -92,7 +92,6 @@ def make_multitask_sa(mdp_distr, state_class=State, indic_func=ind_funcs._q_eps_
     sa_list = []
     for mdp in mdp_distr.get_mdps():
         sa = make_singletask_sa(mdp, indic_func, state_class, epsilon, aa_single_act=aa_single_act, prob_of_mdp=mdp_distr.get_prob_of_mdp(mdp), track_act_opt_pr=track_act_opt_pr)
-
         sa_list += [sa]
 
     multitask_sa = merge_state_abs(sa_list, track_act_opt_pr=track_act_opt_pr)
@@ -116,7 +115,8 @@ def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=
     # Run VI
     if isinstance(mdp, MDPDistribution):
         mdp = mdp.sample()
-    vi = ValueIteration(mdp, delta=0.0001, max_iterations=5000)
+
+    vi = ValueIteration(mdp)
     iters, val = vi.run_vi()
     print " done."
 

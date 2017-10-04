@@ -69,7 +69,11 @@ class StateAbstraction(object):
             else:
                 self._phi[state] = 1
 
-        return self.state_class(self._phi[state])
+        abstr_state = self.state_class(self._phi[state])
+
+        abstr_state.set_terminal(state.is_terminal())
+
+        return abstr_state
 
     def make_cluster(self, list_of_ground_states):
         if len(list_of_ground_states) == 0:
@@ -91,6 +95,20 @@ class StateAbstraction(object):
             (list): Contains all ground states in the cluster.
         '''
         return [s_g for s_g in self.get_ground_states() if self.phi(s_g) == abs_state]
+    
+    def get_lower_states_in_abs_state(self, abs_state):
+        '''
+        Args:
+            abs_state (State)
+
+        Returns:
+            (list): Contains all ground states in the cluster.
+
+        Notes:
+            Here to simplify the state abstraction stack subclass.
+        '''
+        return self.get_ground_states_in_abs_state(abs_state)
+
 
     def get_abs_states(self):
         # For each ground state, get its abstract state.
@@ -102,6 +120,9 @@ class StateAbstraction(object):
 
     def get_ground_states(self):
         return self._phi.keys()
+
+    def get_lower_states(self):
+        return self.get_ground_states()
 
     def get_num_abstr_states(self):
         return len(set(self._phi.values()))

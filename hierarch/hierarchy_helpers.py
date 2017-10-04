@@ -30,35 +30,50 @@ def make_hierarchy(mdp_distr, num_levels):
         two layer hierarchy has a single abstract level and the ground level.
     '''
 
-    if num_levels <= 1:
-        print "(hiearchy_helpers.py) Error: @num_levels must be > 1 (given value: " + str(num_levels) + ")."
+    if num_levels <= 0:
+        print "(hiearchy_helpers.py) Error: @num_levels must be > 0 (given value: " + str(num_levels) + ")."
+        quit()
 
     sa_stack = StateAbstractionStack(list_of_phi=[])
     aa_stack = ActionAbstractionStack(list_of_aa=[], prim_actions=mdp_distr.get_actions())
+    epsilon = 0.0
 
-    for i in xrange(1, num_levels + 1):
-        sa_stack, aa_stack = add_layer(mdp_distr, sa_stack, aa_stack)
+    for i in xrange(1, num_levels):
+        print "\n" + "=" * 20
+        print "== Making layer " + str(i + 1) + " =="
+        print "=" * 20 + "\n"
+        sa_stack, aa_stack, epsilon = add_layer(mdp_distr, sa_stack, aa_stack, init_epsilon=epsilon)
+        # Update MDP Distribution
+
+        epsilon += 0.75
 
     return sa_stack, aa_stack
 
-def add_layer(mdp_distr, sa_stack, aa_stack):
+def add_layer(mdp_distr, sa_stack, aa_stack, init_epsilon=0.0):
     '''
     Args:
         mdp_distr (MDPDistribution)
         sa_stack (StateAbstractionStack)
         aa_stack (ActionAbstractionStack)
+        init_epsilon (float)
 
     Returns:
         (tuple):
             1. StateAbstractionStack
             2. ActionAbstractionStack
+            3. (float): Final epsilon value.
     '''
 
     # Get next abstractions by iterating over compression ratio.
-    epsilon, epsilon_incr = 0.0, 0.01
+    epsilon, epsilon_incr = init_epsilon, 0.01
 
     while epsilon < 1.0:
         print "Abstraction rate (epsilon):", epsilon
+
+        # Set level to the largest shared between sa_stack and aa_stack.
+        abstr_mdp_level = min(sa_stack.get_num_levels(), aa_stack.get_num_levels())
+        sa_stack.set_level(abstr_mdp_level)
+        aa_stack.set_level(abstr_mdp_level)
 
         # Add layer to state abstraction stack.
         sa_stack = add_layer_to_sa_stack(mdp_distr, sa_stack, aa_stack, epsilon)
@@ -74,7 +89,7 @@ def add_layer(mdp_distr, sa_stack, aa_stack):
         else:
             break
 
-    return sa_stack, aa_stack
+    return sa_stack, aa_stack, epsilon
 
 def add_layer_to_sa_stack(mdp_distr, sa_stack, aa_stack, epsilon):
     '''
@@ -87,8 +102,10 @@ def add_layer_to_sa_stack(mdp_distr, sa_stack, aa_stack, epsilon):
     Returns:
         (StateAbstractionStack)
     '''
+
+    # Check stack height.
     if sa_stack.get_num_levels() > 0:
-        abstr_mdp_distr = make_abstr_mdp.make_abstr_mdp_distr(mdp_distr, sa_stack, aa_stack)
+        abstr_mdp_distr = make_abstr_mdp.make_abstr_mdp_distr_multi_level(mdp_distr, sa_stack, aa_stack)
     else:
         abstr_mdp_distr = mdp_distr
 
@@ -125,38 +142,42 @@ def add_layer_to_aa_stack(mdp_distr, sa_stack, aa_stack):
         aa_stack (ActionAbstractionStack)
 
     Returns:
-        (ActionAbstractionStack)
+        (tuple):
+            1. (ActionAbstractionStack)
+            2. (MDPDistribution)
+            3. (bool)
     '''
-
-    sa_stack.set_level_to_max()
     if aa_stack.get_num_levels() > 0:
-        abstr_mdp_distr = make_abstr_mdp.make_abstr_mdp_distr(mdp_distr, sa_stack, aa_stack)
+        abstr_mdp_distr = make_abstr_mdp.make_abstr_mdp_distr_multi_level(mdp_distr, sa_stack, aa_stack)
     else:
         abstr_mdp_distr = mdp_distr
 
-    next_options = aa_helpers.get_directed_options_for_sa(abstr_mdp_distr, sa_stack, incl_self_loops=False)
+    # Make options for the level + 1 height.
+    sa_stack.set_level_to_max()
+    next_options = aa_helpers.get_directed_options_for_sa(abstr_mdp_distr, sa_stack, incl_self_loops=False, max_options=512 / (aa_stack.get_num_levels() + 1))
 
     if not next_options:
         # Too many options, decrease abstracton ratio and continue.
         return aa_stack, True
 
     next_aa = ActionAbstraction(options=next_options, prim_actions=mdp_distr.get_actions())
+    
     aa_stack.add_aa(next_aa)
     return aa_stack, False
 
 def main():
 
-    # ========================
-    # === Make Environment ===
-    # ========================
+    # ======================
+    # == Make Environment ==
+    # ======================
     mdp_class = "four_room"
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=11)
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=7)
     actions = environment.get_actions()
 
-    # ======================
-    # === Make Hierarchy ===
-    # ======================
-    sa_stack, aa_stack = make_hierarchy(environment, num_levels=1)
+    # ====================
+    # == Make Hierarchy ==
+    # ====================
+    sa_stack, aa_stack = make_hierarchy(environment, num_levels=3)
 
 
 if __name__ == "__main__":

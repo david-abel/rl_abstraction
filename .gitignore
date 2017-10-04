@@ -1,4 +1,6 @@
 *.p
 *.pyc
-action_prior*
 results/
+images/
+paper_results/
+good_results/

@@ -20,9 +20,78 @@ import state_abs
 import action_abs
 from state_abs import indicator_funcs as ind_funcs
 
-# -------------------------
-# --- Make Abstractions ---
-# -------------------------
+# -----------------------
+# -- Make Abstractions --
+# -----------------------
+
+def get_abstractions(mdp, indic_func, directed=True, max_options=100):
+    '''
+    Args:
+        mdp (MDP or MDPDistribution)
+        indic_func (lambda): Property tester for the state abstraction.
+        directed (bool)
+        max_options (int)
+
+    Returns:
+        (StateAbstraction, ActionAbstraction)
+    '''
+    if directed:
+        return get_directed_option_sa_pair(mdp, indic_func=indic_func, max_options=max_options)
+    else:
+        sa = get_sa(mdp, indic_func=indic_func)
+        aa = get_aa(mdp)
+        return sa, aa
+
+def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
+    '''
+    Args:
+        mdp_distr (MDPDistribution)
+        indic_func
+        max_options (int)
+
+    Returns:
+        (StateAbstraction, ActionAbstraction)
+    '''
+
+    # Get Abstractions by iterating over epsilons.
+    found_small_option_set = False
+    sa_epsilon, sa_eps_incr = 0.0, 0.01
+
+    if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
+        sa_epsilon = 0.02
+
+    if "whirlpool" in str(mdp_distr.get_all_mdps()[0]):
+        sa_eps_incr = 0.002
+
+    if "color" in str(mdp_distr.get_all_mdps()[0]):
+        sa_epsilon = 0.00
+
+    while sa_epsilon <= 1.0 / (1 - mdp_distr.get_gamma()):
+        print "Epsilon:", sa_epsilon
+
+        # Compute the SA-AA pair.
+        # NOTE: Track act_opt_pr is TRUE
+        sa = get_sa(mdp_distr, indic_func=indic_func, default=False, epsilon=sa_epsilon, track_act_opt_pr=False)
+
+        if sa.get_num_abstr_states() == 1:
+            # We can't have only 1 abstract state.
+            print "Abstraction Error: only 1 abstract state."
+            quit()
+
+        aa = get_directed_aa(mdp_distr, sa, max_options=max_options)
+        if aa:
+            # If this is a good aa, we're done.
+            break
+
+        sa_epsilon += sa_eps_incr
+
+    print "\nFound", len(aa.get_actions()), "Options."
+
+    return sa, aa
+
+# ------------------------
+# -- State Abstractions --
+# ------------------------
 
 def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0, track_act_opt_pr=False):
     '''
@@ -44,6 +113,10 @@ def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0, track_act_opt
     state_abstr = state_abs.sa_helpers.make_sa(mdp_distr, indic_func=indic_func, state_class=State, epsilon=epsilon, track_act_opt_pr=track_act_opt_pr)
 
     return state_abstr
+
+# -------------------------
+# -- Action Abstractions --
+# -------------------------
 
 def get_aa(mdp_distr, default=False):
     '''
@@ -87,131 +160,6 @@ def get_directed_aa(mdp_distr, state_abs, incl_prim_actions=False, max_options=1
     else:
         # Return just the options.
         return ActionAbstraction(options=directed_options, prim_actions=mdp_distr.get_actions(), prims_on_failure=True, term_prob=term_prob)
-
-def compare_planning_abstr(mdp, abstr_mdp):
-    '''
-    Args;
-        mdp (MDP)
-        abstr_mdp (MDP)
-
-    Returns:
-        (int, int): num iters for VI on mdp vs. abstr_mdp
-    '''
-    # Run VI
-    vi = ValueIteration(mdp, delta=0.001, max_iterations=1000)
-    iters, value = vi.run_vi()
-
-    abstr_vi = ValueIteration(abstr_mdp, delta=0.001, max_iterations=1000)
-    abstr_iters, abstr_value = vi.run_vi()
-
-    return iters, abstr_iters
-
-def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
-    '''
-    Args:
-        mdp_distr (MDPDistribution)
-        indic_func
-        max_options (int)
-
-    Returns:
-        (StateAbstraction, ActionAbstraction)
-    '''
-
-     # Get Abstractions by iterating over epsilons.
-    found_small_option_set = False
-    sa_epsilon, sa_eps_incr = 0.0, 0.01
-
-    if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
-        sa_epsilon = 0.02
-
-    if "whirlpool" in str(mdp_distr.get_all_mdps()[0]):
-        sa_eps_incr = 0.002
-
-    if "color" in str(mdp_distr.get_all_mdps()[0]):
-        sa_epsilon = 0.00
-
-    while sa_epsilon <= 1.0 / (1 - mdp_distr.get_gamma()):
-        print "Epsilon:", sa_epsilon
-
-        # Compute the SA-AA pair.
-        # NOTE: Track act_opt_pr is TRUE
-        sa = get_sa(mdp_distr, indic_func=indic_func, default=False, epsilon=sa_epsilon, track_act_opt_pr=False)
-
-        if sa.get_num_abstr_states() == 1:
-            # We can't have only 1 abstract state.
-            print "Abstraction Error: only 1 abstract state."
-            quit()
-
-        aa = get_directed_aa(mdp_distr, sa, max_options=max_options)
-        if aa:
-            # If this is a good aa, we're done.
-            break
-
-        sa_epsilon += sa_eps_incr
-
-    print "\nFound", len(aa.get_actions()), "Options."
-
-    return sa, aa
-
-def get_abstractions(mdp, indic_func, directed=True, max_options=100):
-    '''
-    Args:
-        mdp (MDP or MDPDistribution)
-        indic_func (lambda): Property tester for the state abstraction.
-        directed (bool)
-        max_options (int)
-
-    Returns:
-        (StateAbstraction, ActionAbstraction)
-    '''
-    if directed:
-        return get_directed_option_sa_pair(mdp, indic_func=indic_func, max_options=max_options)
-    else:
-        sa = get_sa(mdp, indic_func=indic_func)
-        aa = get_aa(mdp)
-        return sa, aa
-
-def write_datum_to_file(exp_dir, datum, file_name):
-    '''
-    Args:
-        exp_dir (str)
-        datum (object)
-        file_name (str)
-
-    Summary:
-        Writes @datum to the file stored in join(exp_dir, file_name).
-    '''
-    if not os.path.isdir("results/" + exp_dir + "/"):
-        os.makedirs("results/" + exp_dir)
-    out_file = open("results/" + exp_dir + "/" + file_name + ".csv", "a+")
-    out_file.write(str(datum) + ",")
-    out_file.close()
-
-def print_aa(action_abstr, state_space):
-    '''
-    Args:
-        action_abstr (ActionAbstraction)
-        state_space (list of State)
-
-    Summary:
-        Prints out options in a convenient way.
-    '''
-
-    options = action_abstr.get_actions()
-    for o in options:
-        inits = [s for s in state_space if o.is_init_true(s)]
-        terms = [s for s in state_space if o.is_term_true(s)]
-        print o
-        print "\tinit:",
-        for s in inits:
-            print s,
-        print
-        print "\tterm:",
-        for s in terms:
-            print s,
-        print
-        print
-        print
 
 
 def parse_args():

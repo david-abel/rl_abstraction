@@ -65,7 +65,7 @@ def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, m
 
     # Check max # options.
     if len(options) > max_options:
-        print "\tToo many options (" + str(len(options)) + "). Increasing compression rate and continuing.\n"
+        print "\tToo many options (" + str(len(options)) + "), need < " + str(max_options) + ". Increasing compression rate and continuing.\n"
         return False
     print "\tMade", len(options), "options (formed clique over S_A)."
     print "\tPruning...",
@@ -108,14 +108,14 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
         print "Option", i, "of", len(options)
         pre_abs_state, post_abs_state = state_pairs[i]
 
-        # Get init and terminal ground states.
-        ground_init_states = state_abstr.get_ground_states_in_abs_state(pre_abs_state)
-        ground_term_states = state_abstr.get_ground_states_in_abs_state(post_abs_state)
+        # Get init and terminal lower level states.
+        ground_init_states = state_abstr.get_lower_states_in_abs_state(pre_abs_state)
+        ground_term_states = state_abstr.get_lower_states_in_abs_state(post_abs_state)
         rand_init_g_state = random.choice(ground_init_states)
 
         # R and T for Option Mini MDP.
         def _directed_option_reward_lambda(s, a):
-            s_prime = transition_func(s,a)
+            s_prime = transition_func(s, a)
             return int(s_prime in ground_term_states and not s in ground_term_states)
 
         def new_trans_func(s, a):
@@ -165,14 +165,14 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                 else:
                     cluster_init_state = random.choice(ground_init_states)
 
-                # Make a new 
+                # Make a new MDP.
                 mini_mdp = MDP(actions=goal_mdp.get_actions(),
                         init_state=cluster_init_state,
                         transition_func=goal_new_trans_func,
                         reward_func=goal_mdp.get_reward_func())
 
 
-                o_policy, mini_mdp_vi = _make_mini_mdp_option_policy(mini_mdp, state_abstr)
+                o_policy, mini_mdp_vi = _make_mini_mdp_option_policy(mini_mdp)
 
                 # Make new option.
                 new_option = Option(o.init_predicate, o.term_predicate, o_policy)
@@ -191,13 +191,12 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                             reward_func=_directed_option_reward_lambda)
 
 
-            o_policy, mini_mdp_vi = _make_mini_mdp_option_policy(mini_mdp, state_abstr)
+            print "making and solving mini_mdp"
+            o_policy, mini_mdp_vi = _make_mini_mdp_option_policy(mini_mdp)
             # Compute overlap w.r.t. plans from each state.
             for init_g_state in ground_init_states:
-
                 # Prune overlapping ones.
                 plan, state_seq = mini_mdp_vi.plan(init_g_state)
-                
                 opt_name = str(ground_init_states[0]) + "-" + str(ground_term_states[0])
                 o.set_name(opt_name)
                 options[i] = o
@@ -216,23 +215,22 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
 
     return good_options
 
-def _make_mini_mdp_option_policy(mini_mdp, state_abstr):
-        '''
-        Args:
-            mini_mdp (MDP)
-            state_abstr (StateAbstraction)
+def _make_mini_mdp_option_policy(mini_mdp):
+    '''
+    Args:
+        mini_mdp (MDP)
 
-        Returns:
-            Policy
-        '''
-        # Solve the MDP defined by the terminal abstract state.
-        mini_mdp_vi = ValueIteration(mini_mdp, delta=0.0001, max_iterations=5000)
-        iters, val = mini_mdp_vi.run_vi()
+    Returns:
+        Policy
+    '''
+    # Solve the MDP defined by the terminal abstract state.
+    mini_mdp_vi = ValueIteration(mini_mdp, delta=0.005, max_iterations=10, sample_rate=30)
+    iters, val = mini_mdp_vi.run_vi()
 
-        o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, state_abstr.get_ground_states())
-        o_policy = PolicyFromDict(o_policy_dict)
+    o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, mini_mdp_vi.get_states())
+    o_policy = PolicyFromDict(o_policy_dict)
 
-        return o_policy.get_action, mini_mdp_vi
+    return o_policy.get_action, mini_mdp_vi
 
 def _check_overlap(option, state_seq, options, bad_options):
     '''
@@ -425,3 +423,29 @@ def make_greedy_options(mdp_distr):
             visited_states.add(new_state)
 
     return new_aa
+
+def print_aa(action_abstr, state_space):
+    '''
+    Args:
+        action_abstr (ActionAbstraction)
+        state_space (list of State)
+
+    Summary:
+        Prints out options in a convenient way.
+    '''
+
+    options = action_abstr.get_actions()
+    for o in options:
+        inits = [s for s in state_space if o.is_init_true(s)]
+        terms = [s for s in state_space if o.is_term_true(s)]
+        print o
+        print "\tinit:",
+        for s in inits:
+            print s,
+        print
+        print "\tterm:",
+        for s in terms:
+            print s,
+        print
+        print
+        print

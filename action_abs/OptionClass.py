@@ -5,7 +5,7 @@ from simple_rl.mdp.StateClass import State
 
 class Option(object):
 
-	def __init__(self, init_predicate, term_predicate, policy, name="o", term_prob=0.0):
+	def __init__(self, init_predicate, term_predicate, policy, name="o", term_prob=0.01):
 		'''
 		Args:
 			init_func (S --> {0,1})
@@ -39,17 +39,40 @@ class Option(object):
 	def set_name(self, new_name):
 		self.name = new_name
 
-	def act_until_terminal(self, init_state, transition_func):
+	def act_until_terminal(self, cur_state, transition_func):
 		'''
 		Summary:
 			Executes the option until termination.
 		'''
-		if self.is_init_true(init_state):
-			cur_state = transition_func(init_state, self.act(init_state))
+		if self.is_init_true(cur_state):
+			cur_state = transition_func(cur_state, self.act(cur_state))
 			while not self.is_term_true(cur_state):
 				cur_state = transition_func(cur_state, self.act(cur_state))
 
 		return cur_state
+
+	def rollout(self, cur_state, reward_func, transition_func, step_cost=0):
+		'''
+		Summary:
+			Executes the option until termination.
+
+		Returns:
+			(tuple):
+				1. (State): state we landed in.
+				2. (float): Reward from the trajectory.
+		'''
+		total_reward = 0
+		if self.is_init_true(cur_state):
+			# First step.
+			total_reward += reward_func(cur_state, self.act(cur_state)) - step_cost
+			cur_state = transition_func(cur_state, self.act(cur_state))
+
+			# Act until terminal.
+			while not self.is_term_true(cur_state):
+				cur_state = transition_func(cur_state, self.act(cur_state))
+				total_reward += reward_func(cur_state, self.act(cur_state)) - step_cost
+
+		return cur_state, total_reward
 
 	def policy_from_dict(self, state):
 		if state not in self.policy_dict.keys():

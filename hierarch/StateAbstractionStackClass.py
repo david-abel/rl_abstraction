@@ -52,6 +52,11 @@ class StateAbstractionStack(StateAbstraction):
 
         Returns:
             (simple_rl.State)
+
+        Notes:
+            level:
+                0 --> Ground
+                1 --> First abstract layer, and so on.
         '''
 
         # Get the level to raise the state to.
@@ -60,11 +65,14 @@ class StateAbstractionStack(StateAbstraction):
             level = self.level
         elif level == -1:
             # Grab the last one.
-            level = self.get_num_levels()
+            level = self.get_num_levels() - 1
 
         if self.get_num_levels() == 0 or level == 0:
             # If there are no more levels, identity function.
             return lower_state
+
+        # Suppose level = 1. Now we'll grab the phi in the first slot and abstract it.
+        # Suppose level = 2. We abstract once, cur_level=1, abstract again, cur_level=2 (DONE).
 
         # Get the current state's level.
         if isinstance(lower_state, HierarchyState):
@@ -73,10 +81,13 @@ class StateAbstractionStack(StateAbstraction):
             cur_level = 0
 
 
-        # Get the immediate abstracted state (one lvl higher).
-        s_a = self.list_of_phi[cur_level][lower_state]
-        cur_level += 1
+        # if cur_level < level:
+        # # Get the immediate abstracted state (one lvl higher).
+        # print "cur_level:", cur_level, level
+        # s_a = self.list_of_phi[cur_level][lower_state]
+        # cur_level += 1
 
+        s_a = lower_state
         # Iterate until we're at the right level.
         while cur_level < level:
             s_a = self.list_of_phi[cur_level][s_a]
@@ -101,6 +112,17 @@ class StateAbstractionStack(StateAbstraction):
             (list): Contains all ground states in the cluster.
         '''
         return [s_g for s_g in self.get_ground_states() if self.phi(s_g, level=abs_state.get_level()) == abs_state]
+
+    def get_lower_states_in_abs_state(self, abs_state):
+        '''
+        Args:
+            abs_state (State)
+
+        Returns:
+            (list): Contains all ground states in the cluster.
+        '''
+        return [s_g for s_g in self.get_lower_states(level=abs_state.get_level()) if self.phi(s_g, level=abs_state.get_level()) == abs_state]
+
 
     def get_lower_states(self, level=None):
         if level == None:
