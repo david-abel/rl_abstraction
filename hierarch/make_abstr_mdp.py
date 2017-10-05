@@ -13,7 +13,7 @@ from TransitionFuncClass import TransitionFunc
 # -- Single Level --
 # ------------------
 
-def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=5):
+def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=15):
 	'''
 	Args:
 		mdp (MDP)
@@ -54,21 +54,18 @@ def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=5)
 		lower_reward_func = mdp.get_reward_func()
 		lower_trans_func = mdp.get_transition_func()
 
-		# Compute reward.
+		# Compute next state distribution.
 		s_prime_prob_dict = defaultdict(int)
 		total_reward = 0
-		# print "\tground:",
 		for ground_s in lower_states:
 			for sample in xrange(sample_rate):
-				# print ground_s,
 				s_prime, reward = abstr_action.rollout(ground_s, lower_reward_func, lower_trans_func)
 				s_prime_prob_dict[s_prime] += (1.0 / (len(lower_states) * sample_rate)) # Weighted average.
+		
 		# Form distribution and sample s_prime.
 		end_ground_state = s_prime_prob_dict.keys()[list(np.random.multinomial(1, s_prime_prob_dict.values()).tolist()).index(1)]
-		# print "\n\tend", end_ground_state
 		end_abstr_state = state_abstr.phi(end_ground_state, level=abstr_state.get_level())
-		# print "\tabstracted:", end_abstr_state
-		# print
+
 		return end_abstr_state
 	
 
@@ -77,7 +74,7 @@ def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=5)
 	abstr_action_space = action_abstr.get_actions()
 	abstr_state_space = state_abstr.get_abs_states()
 	abstr_reward_func = RewardFunc(abstr_reward_lambda, abstr_state_space, abstr_action_space)
-	abstr_transition_func = TransitionFunc(abstr_transition_lambda, abstr_state_space, abstr_action_space, sample_rate=5)
+	abstr_transition_func = TransitionFunc(abstr_transition_lambda, abstr_state_space, abstr_action_space, sample_rate=sample_rate)
 
 	# Make the MDP.
 	abstr_mdp = MDP(actions=abstr_action_space,

@@ -21,7 +21,7 @@ def main():
     # === Make SA, AA Stacks ===
     # ==========================
     # sa_stack, aa_stack = aa_stack_h.make_random_sa_diropt_aa_stack(environment, max_num_levels=3)
-    sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=3)
+    sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=2)
 
     # Debug.
     print "\n" + ("=" * 30)
@@ -38,7 +38,7 @@ def main():
     l0_hierarch_agent = HierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=0, name_ext="-$l_0$")
     l1_hierarch_agent = HierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$l_1$")
     # l2_hierarch_agent = HierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$l_2$")
-    dynamic_hierarch_agent = DynamicHierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$d$")
+    dynamic_hierarch_agent = DynamicHierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
 
     print "\n" + ("=" * 26)
     print "== Running experiments. =="
@@ -48,7 +48,7 @@ def main():
     # === Run Experiment ===
     # ======================
     agents = [l0_hierarch_agent, l1_hierarch_agent, dynamic_hierarch_agent, rand_agent, baseline_agent]
-    run_agents_multi_task(agents, environment, task_samples=1000, steps=150, episodes=1, reset_at_terminal=True)
+    run_agents_multi_task(agents, environment, task_samples=2000, steps=1000, episodes=1, reset_at_terminal=True)
 
 
 if __name__ == "__main__":
