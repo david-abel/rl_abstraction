@@ -16,7 +16,7 @@ class HierarchyAgent(Agent):
         self.action_abstr_stack = aa_stack
         self.cur_level = cur_level
         self.agent = SubAgentClass(actions=self.get_cur_actions())
-        Agent.__init__(self, name=self.agent.get_name() + "-hierarch" + name_ext, actions=self.get_cur_actions())
+        Agent.__init__(self, name=self.agent.name + "-hierarch" + name_ext, actions=self.get_cur_actions())
     
     # -- Accessors --
 
