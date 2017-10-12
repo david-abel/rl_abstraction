@@ -18,7 +18,6 @@ from simple_rl.tasks import GridWorldMDP
 # ----------------------
 # -- Directed Options --
 # ----------------------
-
 def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, max_options=100):
     '''
     Args:
@@ -242,6 +241,7 @@ def _check_overlap(option, state_seq, options, bad_options):
         (bool): If true, we should remove this option.
     '''
     terminal_is_reachable = False
+    bad_options = set(bad_options)
 
     for i, s_g in enumerate(state_seq):
         for o_prime in options:
@@ -249,7 +249,8 @@ def _check_overlap(option, state_seq, options, bad_options):
             if o_prime in bad_options:
                 continue
 
-            is_in_middle = (not option.is_term_true(s_g)) and (not option.is_init_true(s_g))
+            # is_in_middle = (not option.is_term_true(s_g)) and (not option.is_init_true(s_g))
+            is_in_middle = not (option.is_term_true(s_g) or option.is_init_true(s_g))
             if is_in_middle and o_prime.is_init_true(s_g):
                 # We should get rid of @option, because it's path goes through another init.
                 return True
@@ -380,7 +381,6 @@ def add_next_option(mdp_distr, next_decis_state, sub_opt_funcs):
     o = Option(init_func, term_func=term_func_states, policy=policy_dict)
 
     return o
-
 
 def make_greedy_options(mdp_distr):
     '''
