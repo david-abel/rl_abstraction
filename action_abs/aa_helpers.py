@@ -223,7 +223,7 @@ def _make_mini_mdp_option_policy(mini_mdp):
         Policy
     '''
     # Solve the MDP defined by the terminal abstract state.
-    mini_mdp_vi = ValueIteration(mini_mdp, delta=0.005, max_iterations=10, sample_rate=30)
+    mini_mdp_vi = ValueIteration(mini_mdp, delta=0.005, max_iterations=1000, sample_rate=30)
     iters, val = mini_mdp_vi.run_vi()
 
     o_policy_dict = make_dict_from_lambda(mini_mdp_vi.policy, mini_mdp_vi.get_states())

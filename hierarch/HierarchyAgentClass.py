@@ -54,7 +54,6 @@ class HierarchyAgent(Agent):
 
         self.cur_level = new_level
 
-
     # -- Central Act Method --
 
     def act(self, ground_state, reward):
@@ -68,7 +67,6 @@ class HierarchyAgent(Agent):
         '''
         # Give the SA stack, ground state, and reward to the AA stack.
         return self.action_abstr_stack.act(self.agent, self.state_abstr_stack, ground_state, reward, level=self.cur_level)
-
    
     # -- Reset --
 

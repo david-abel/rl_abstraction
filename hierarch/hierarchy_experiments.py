@@ -13,8 +13,8 @@ def main():
     # ========================
     # === Make Environment ===
     # ========================
-    mdp_class = "hrooms"
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=5)
+    mdp_class = "four_room"
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=9, step_cost=0.01)
     actions = environment.get_actions()
 
     # ==========================
@@ -33,14 +33,15 @@ def main():
     # ===================
     # === Make Agents ===
     # ===================
-    baseline_agent = QLearnerAgent(actions)
-    rmax_agent = RMaxAgent(actions)
+    # baseline_agent = QLearnerAgent(actions)
+    agent_class = RMaxAgent
+    baseline_agent = agent_class(actions)
     rand_agent = RandomAgent(actions)
-    l0_hierarch_agent = HierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=0, name_ext="-$l_0$")
-    l1_hierarch_agent = HierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$l_1$")
-    # l2_hierarch_agent = HierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$l_2$")
-    dynamic_hierarch_agent = DynamicHierarchyAgent(QLearnerAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
-    dynamic_rmax_hierarch_agent = DynamicHierarchyAgent(RMaxAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
+    l0_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=0, name_ext="-$l_0$")
+    l1_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$l_1$")
+    l2_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$l_2$")
+    dynamic_hierarch_agent = DynamicHierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
+    # dynamic_rmax_hierarch_agent = DynamicHierarchyAgent(RMaxAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
 
     print "\n" + ("=" * 26)
     print "== Running experiments. =="
@@ -49,8 +50,8 @@ def main():
     # ======================
     # === Run Experiment ===
     # ======================
-    agents = [l1_hierarch_agent, dynamic_hierarch_agent, dynamic_rmax_hierarch_agent]
-    run_agents_multi_task(agents, environment, task_samples=10, steps=1500, episodes=1, reset_at_terminal=True)
+    agents = [l1_hierarch_agent, l2_hierarch_agent, dynamic_hierarch_agent, baseline_agent]
+    run_agents_multi_task(agents, environment, task_samples=50, steps=3000, episodes=1, reset_at_terminal=True)
 
 
 if __name__ == "__main__":

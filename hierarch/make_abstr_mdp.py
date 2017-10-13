@@ -13,13 +13,12 @@ from TransitionFuncClass import TransitionFunc
 # -- Single Level --
 # ------------------
 
-def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=15):
+def make_abstr_mdp(mdp, state_abstr, action_abstr, sample_rate=25):
 	'''
 	Args:
 		mdp (MDP)
 		state_abstr (StateAbstraction)
 		action_abstr (ActionAbstraction)
-		step_cost (float): Cost for a step in the lower MDP.
 		sample_rate (int): Sample rate for computing the abstract R and T.
 
 	Returns:
@@ -41,9 +40,13 @@ def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=15
 		total_reward = 0
 		for ground_s in lower_states:
 			for sample in xrange(sample_rate):
-				s_prime, reward = abstr_action.rollout(ground_s, lower_reward_func, lower_trans_func, step_cost=step_cost)
+				s_prime, reward = abstr_action.rollout(ground_s, lower_reward_func, lower_trans_func)
 				total_reward += float(reward) / (len(lower_states) * sample_rate) # Add weighted reward.
 
+		# print "~"*20
+		# print "R_A:", abstr_state, abstr_action, total_reward
+		# print "~"*20
+		
 		return total_reward
 
 	def abstr_transition_lambda(abstr_state, abstr_action):
@@ -85,7 +88,7 @@ def make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=0.1, sample_rate=15
 
 	return abstr_mdp
 
-def make_abstr_mdp_distr(mdp_distr, state_abstr, action_abstr, step_cost=0.1):
+def make_abstr_mdp_distr(mdp_distr, state_abstr, action_abstr): #, step_cost=0.1):
 	'''
 	Args:
 		mdp_distr (MDPDistribution)
@@ -99,7 +102,7 @@ def make_abstr_mdp_distr(mdp_distr, state_abstr, action_abstr, step_cost=0.1):
 	# Loop through old mdps and abstract.
 	mdp_distr_dict = {}
 	for mdp in mdp_distr.get_all_mdps():
-		abstr_mdp = make_abstr_mdp(mdp, state_abstr, action_abstr, step_cost=step_cost)
+		abstr_mdp = make_abstr_mdp(mdp, state_abstr, action_abstr) #, step_cost=step_cost)
 		prob_of_abstr_mdp = mdp_distr.get_prob_of_mdp(mdp)
 		mdp_distr_dict[abstr_mdp] = prob_of_abstr_mdp
 
@@ -109,13 +112,12 @@ def make_abstr_mdp_distr(mdp_distr, state_abstr, action_abstr, step_cost=0.1):
 # -- Multi Level --
 # -----------------
 
-def make_abstr_mdp_multi_level(mdp, state_abstr_stack, action_abstr_stack, step_cost=0.1, sample_rate=5):
+def make_abstr_mdp_multi_level(mdp, state_abstr_stack, action_abstr_stack, sample_rate=5):
 	'''
 	Args:
 		mdp (MDP)
 		state_abstr_stack (StateAbstractionStack)
 		action_abstr_stack (ActionAbstractionStack)
-		step_cost (float): Cost for a step in the lower MDP.
 		sample_rate (int): Sample rate for computing the abstract R and T.
 
 	Returns:
@@ -126,12 +128,12 @@ def make_abstr_mdp_multi_level(mdp, state_abstr_stack, action_abstr_stack, step_
 	for i in xrange(1, mdp_level + 1):
 		state_abstr_stack.set_level(i)
 		action_abstr_stack.set_level(i)
-		mdp = make_abstr_mdp(mdp, state_abstr_stack, action_abstr_stack, step_cost, sample_rate)
+		mdp = make_abstr_mdp(mdp, state_abstr_stack, action_abstr_stack, sample_rate)
 
 	return mdp
 
 
-def make_abstr_mdp_distr_multi_level(mdp_distr, state_abstr, action_abstr, step_cost=0.1):
+def make_abstr_mdp_distr_multi_level(mdp_distr, state_abstr, action_abstr):
 	'''
 	Args:
 		mdp_distr (MDPDistribution)
@@ -145,7 +147,7 @@ def make_abstr_mdp_distr_multi_level(mdp_distr, state_abstr, action_abstr, step_
 	# Loop through old mdps and abstract.
 	mdp_distr_dict = {}
 	for mdp in mdp_distr.get_all_mdps():
-		abstr_mdp = make_abstr_mdp_multi_level(mdp, state_abstr, action_abstr, step_cost=step_cost)
+		abstr_mdp = make_abstr_mdp_multi_level(mdp, state_abstr, action_abstr)
 		prob_of_abstr_mdp = mdp_distr.get_prob_of_mdp(mdp)
 		mdp_distr_dict[abstr_mdp] = prob_of_abstr_mdp
 

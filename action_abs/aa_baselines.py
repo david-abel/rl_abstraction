@@ -300,7 +300,7 @@ def make_policy_blocks_options(mdp_distr, num_options, task_samples):
         print "\tRunning VI...",
         sys.stdout.flush()
         # Run VI
-        vi = ValueIteration(mdp, delta=0.0001, max_iterations=5000)
+        vi = ValueIteration(mdp, delta=0.0001, max_iterations=5000, sample_rate=5)
         iters, val = vi.run_vi()
         print " done."
 

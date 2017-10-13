@@ -51,7 +51,7 @@ class Option(object):
 
 		return cur_state
 
-	def rollout(self, cur_state, reward_func, transition_func, step_cost=0):
+	def rollout(self, cur_state, reward_func, transition_func): #, step_cost=0):
 		'''
 		Summary:
 			Executes the option until termination.
@@ -64,13 +64,13 @@ class Option(object):
 		total_reward = 0
 		if self.is_init_true(cur_state):
 			# First step.
-			total_reward += reward_func(cur_state, self.act(cur_state)) - step_cost
+			total_reward += reward_func(cur_state, self.act(cur_state)) # - step_cost
 			cur_state = transition_func(cur_state, self.act(cur_state))
 
 			# Act until terminal.
 			while not self.is_term_true(cur_state):
 				cur_state = transition_func(cur_state, self.act(cur_state))
-				total_reward += reward_func(cur_state, self.act(cur_state)) - step_cost
+				total_reward += reward_func(cur_state, self.act(cur_state))# - step_cost
 
 		return cur_state, total_reward
 

@@ -45,7 +45,7 @@ def make_hierarchy(mdp_distr, num_levels):
         sa_stack, aa_stack, epsilon = add_layer(mdp_distr, sa_stack, aa_stack, init_epsilon=epsilon)
         # Update MDP Distribution
 
-        epsilon += 0.75
+        epsilon += 0.90
 
     return sa_stack, aa_stack
 
@@ -154,7 +154,7 @@ def add_layer_to_aa_stack(mdp_distr, sa_stack, aa_stack):
 
     # Make options for the level + 1 height.
     sa_stack.set_level_to_max()
-    next_options = aa_helpers.get_directed_options_for_sa(abstr_mdp_distr, sa_stack, incl_self_loops=False, max_options=512 / (aa_stack.get_num_levels() + 1))
+    next_options = aa_helpers.get_directed_options_for_sa(abstr_mdp_distr, sa_stack, incl_self_loops=False, max_options=1024 / (aa_stack.get_num_levels() + 1))
 
     if not next_options:
         # Too many options, decrease abstracton ratio and continue.
