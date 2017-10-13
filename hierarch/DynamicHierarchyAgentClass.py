@@ -35,7 +35,7 @@ class DynamicHierarchyAgent(HierarchyAgent):
             abstr_state = self.state_abstr_stack.phi(ground_state, lvl)
             v_hat = self.agent.get_max_q_value(abstr_state)
 
-            print "\t\t V(s):", ground_state, v_hat
+            # print "\t\t V(s):", ground_state, v_hat
             if v_hat > max_q:
                 best_lvl = lvl
                 max_q = v_hat
