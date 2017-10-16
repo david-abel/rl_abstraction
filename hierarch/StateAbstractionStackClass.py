@@ -147,7 +147,8 @@ class StateAbstractionStack(StateAbstraction):
 
     def print_state_space_sizes(self):
         print "State Space Sizes:"
-        print "\t0", len(self.get_ground_states())
+        print "\tl_0:", len(self.get_ground_states())
 
         for i, phi in enumerate(self.list_of_phi):
-            print "\t", i + 1, len(set(phi.values()))
+            print "\tl_" + str(i + 1) + ":", len(set(phi.values()))
+        print

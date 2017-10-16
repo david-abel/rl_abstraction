@@ -13,8 +13,8 @@ def main():
     # ========================
     # === Make Environment ===
     # ========================
-    mdp_class = "four_room"
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=9, step_cost=0.01)
+    mdp_class = "hrooms"
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, step_cost=0.01, gamma=1.0)
     actions = environment.get_actions()
 
     # ==========================
@@ -24,17 +24,15 @@ def main():
     sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=3)
 
     # Debug.
-    print "\n" + ("=" * 30)
-    print "== Done making abstraction. =="
-    print "=" * 30 + "\n"
+    print "\n" + ("=" * 30) + "\n== Done making abstraction. ==\n" + ("=" * 30) + "\n"
     sa_stack.print_state_space_sizes()
-    print "Num Action Abstractions:", len(aa_stack.get_aa_list())
+    aa_stack.print_action_spaces_sizes()
 
     # ===================
     # === Make Agents ===
     # ===================
     # baseline_agent = QLearnerAgent(actions)
-    agent_class = RMaxAgent
+    agent_class = QLearnerAgent
     baseline_agent = agent_class(actions)
     rand_agent = RandomAgent(actions)
     l0_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=0, name_ext="-$l_0$")
@@ -51,7 +49,7 @@ def main():
     # === Run Experiment ===
     # ======================
     agents = [l1_hierarch_agent, l2_hierarch_agent, dynamic_hierarch_agent, baseline_agent]
-    run_agents_multi_task(agents, environment, task_samples=50, steps=3000, episodes=1, reset_at_terminal=True)
+    run_agents_multi_task(agents, environment, task_samples=50, steps=500, episodes=1, reset_at_terminal=True)
 
 
 if __name__ == "__main__":

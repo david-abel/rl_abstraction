@@ -81,3 +81,10 @@ class ActionAbstractionStack(ActionAbstraction):
 
     def add_aa(self, new_aa):
         self.list_of_aa.append(new_aa)
+
+    def print_action_spaces_sizes(self):
+        print "Action Space Sizes:"
+        print "\tl_0:", len(self.prim_actions)
+        for i in xrange(len(self.list_of_aa)):
+            print "\tl_" + str(i + 1) + ":", len(self.list_of_aa[i].get_actions())
+        print
