@@ -34,6 +34,14 @@ def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, m
     sys.stdout.flush()
     
     abs_states = state_abstr.get_abs_states()
+
+    # Check max # options.
+    total_clique_options = len(abs_states) * (len(abs_states) - 1)
+    if total_clique_options > max_options:
+        print "\tToo many options (" + str(total_clique_options) + "), need < " + str(max_options) + ". Increasing compression rate and continuing.\n"
+        return False
+
+
     g_start_state = mdp_distr.get_init_state()
 
     # Compute all directed options that transition between abstract states.
@@ -65,19 +73,16 @@ def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, m
                 options.append(o)
                 state_pairs.append((s_a, s_a_prime))
 
-    # Check max # options.
-    if len(options) > max_options:
-        print "\tToo many options (" + str(len(options)) + "), need < " + str(max_options) + ". Increasing compression rate and continuing.\n"
-        return False
+
     print "\tMade", len(options), "options (formed clique over S_A)."
-    print "\tPruning...",
+    print "\tPruning..."
 
     sys.stdout.flush()
 
     # Prune.
     pruned_option_set = _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr)
 
-    print "done. Reduced to", len(pruned_option_set), "options."
+    print "\tFinished Pruning. Reduced to", len(pruned_option_set), "options."
 
     return pruned_option_set
 
@@ -102,7 +107,7 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
 
     # For each option we created, we'll check overlap.
     for i, o in enumerate(options):
-        print "Option", i, "of", len(options)
+        print "\t  Option", i + 1, "of", len(options)
         pre_abs_state, post_abs_state = state_pairs[i]
 
         # Get init and terminal lower level states.
