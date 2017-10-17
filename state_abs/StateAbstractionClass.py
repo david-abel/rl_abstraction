@@ -141,18 +141,18 @@ class StateAbstraction(object):
         merged_state_abs = {}
 
         # Move the phi into a cluster dictionary.
-        cluster_dict = defaultdict(list)
+        cluster_dict = defaultdict(set)
         for k, v in self._phi.iteritems():
             # Cluster dict: v is abstract, key is ground.
-            cluster_dict[v].append(k)
+            cluster_dict[v].add(k)
 
         # Move the phi into a cluster dictionary.
-        other_cluster_dict = defaultdict(list)
+        other_cluster_dict = defaultdict(set)
         for k, v in other_abs._phi.iteritems():
-            other_cluster_dict[v].append(k)
+            other_cluster_dict[v].add(k)
 
         for ground_state in self._phi.keys():
-            # Get the two clusters associated with a state.
+            # Get the two clusters (ints that define abstr states) associated with a state.
             states_cluster = self._phi[ground_state]
             if ground_state in other_abs._phi.keys():
                 # Only add if it's in both clusters.
@@ -162,29 +162,23 @@ class StateAbstraction(object):
 
             for s_g in cluster_dict[states_cluster]:
                 if s_g in other_cluster_dict[states_other_cluster]:
-                    # Every ground state that's in both clusters, merge.
+                    # Grab every ground state that's in both clusters and put them in the new cluster.
                     merged_state_abs[s_g] = states_cluster
-
+        
         new_sa = StateAbstraction(phi=merged_state_abs, track_act_opt_pr=self.track_act_opt_pr)
-
-        # Grab the two action optimality dictionaries.
-        opt_dict = self.get_act_opt_dict()
-        other_opt_dict = other_abs.get_act_opt_dict()
 
         # Build the new action optimality dictionary.
         if self.track_act_opt_pr:
+            # Grab the two action optimality dictionaries.
+            opt_dict = self.get_act_opt_dict()
+            other_opt_dict = other_abs.get_act_opt_dict()
+            
             # If we're tracking the action's probability.
             new_dict = defaultdict(lambda:defaultdict(float))
             for s_g in self.get_ground_states():
                 for a_g in opt_dict[s_g].keys() + other_opt_dict[s_g].keys():
                     new_dict[s_g][a_g] = opt_dict[s_g][a_g] + other_opt_dict[s_g][a_g]
-        else:
-            new_dict = defaultdict(set)
-            for ground_state in self.get_ground_states():
-                new_action_set = opt_dict[ground_state].union(other_opt_dict[ground_state])
-                new_dict[ground_state] = new_action_set
-                # new_sa.set_actions_state_opt_dict(ground_state, new_action_set)
+            new_sa.set_act_opt_dict(new_dict)
 
-        new_sa.set_act_opt_dict(new_dict)
         return new_sa
 

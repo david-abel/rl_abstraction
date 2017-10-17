@@ -13,15 +13,14 @@ def main():
     # ========================
     # === Make Environment ===
     # ========================
-    mdp_class = "hrooms"
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, step_cost=0.01, gamma=1.0)
+    mdp_class = "four_room"
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, step_cost=0.01, grid_dim=15, gamma=1.0)
     actions = environment.get_actions()
 
     # ==========================
     # === Make SA, AA Stacks ===
     # ==========================
-    # sa_stack, aa_stack = aa_stack_h.make_random_sa_diropt_aa_stack(environment, max_num_levels=3)
-    sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=3)
+    sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=2)
 
     # Debug.
     print "\n" + ("=" * 30) + "\n== Done making abstraction. ==\n" + ("=" * 30) + "\n"
@@ -37,7 +36,7 @@ def main():
     rand_agent = RandomAgent(actions)
     l0_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=0, name_ext="-$l_0$")
     l1_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$l_1$")
-    l2_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$l_2$")
+    # l2_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$l_2$")
     dynamic_hierarch_agent = DynamicHierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
     # dynamic_rmax_hierarch_agent = DynamicHierarchyAgent(RMaxAgent, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$d$")
 
@@ -48,8 +47,8 @@ def main():
     # ======================
     # === Run Experiment ===
     # ======================
-    agents = [l1_hierarch_agent, l2_hierarch_agent, dynamic_hierarch_agent, baseline_agent]
-    run_agents_multi_task(agents, environment, task_samples=50, steps=500, episodes=1, reset_at_terminal=True)
+    agents = [l1_hierarch_agent, dynamic_hierarch_agent, baseline_agent]
+    run_agents_multi_task(agents, environment, task_samples=50, steps=50000, episodes=1, reset_at_terminal=True)
 
 
 if __name__ == "__main__":

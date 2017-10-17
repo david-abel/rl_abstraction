@@ -123,19 +123,19 @@ def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=
     print "\tMaking state abstraction...",
     sys.stdout.flush()
     sa = StateAbstraction(phi={}, state_class=state_class, track_act_opt_pr=track_act_opt_pr)
-    clusters = defaultdict(list)
+    clusters = defaultdict(set)
     num_states = len(vi.get_states())
 
     actions = mdp.get_actions()
     # Find state pairs that satisfy the condition.
     for i, state_x in enumerate(vi.get_states()):
         sys.stdout.flush()
-        clusters[state_x] = [state_x]
+        clusters[state_x].add(state_x)
 
         for state_y in vi.get_states()[i:]:
-            if not (state_x == state_y) and indic_func(state_x, state_y, vi, actions, epsilon=epsilon):
-                clusters[state_x].append(state_y)
-                clusters[state_y].append(state_x)
+            if not(state_x == state_y) and indic_func(state_x, state_y, vi, actions, epsilon=epsilon):
+                clusters[state_x].add(state_y)
+                clusters[state_y].add(state_x)
 
     print "making clusters...",
     sys.stdout.flush()

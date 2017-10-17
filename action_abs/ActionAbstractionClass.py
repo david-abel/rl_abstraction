@@ -8,7 +8,7 @@ from PredicateClass import Predicate
 
 class ActionAbstraction(object):
 
-    def __init__(self, options, prim_actions, term_prob=0.0, prims_on_failure=False):
+    def __init__(self, options, prim_actions, term_prob=0.0, prims_on_failure=True):
         self.options = self._convert_to_options(options)
         self.is_cur_executing = False
         self.cur_option = None # The option we're executing currently.
@@ -43,7 +43,7 @@ class ActionAbstraction(object):
                     agent.actions = self._convert_to_options(self.prim_actions)
                 else:
                     # No actions available.
-                    print "Error: no actions available in state " + str(ground_state) + "."
+                    print "Error: no actions available in state " + str(ground_state) + ". (r:" + str(reward) + "," + str(ground_state.is_terminal()) + ")."
                     quit()
             else:
                 # Give agent available options.
