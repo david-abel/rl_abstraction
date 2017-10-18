@@ -27,9 +27,6 @@ class ActionAbstraction(object):
         Returns:
             (str)
         '''
-        if ground_state.is_terminal():
-            return random.choice(self.prim_actions)
-
         if self.is_next_step_continuing_option(ground_state) and random.random() > self.term_prob:
             # We're in an option and not terminating.
             return self.get_next_ground_action(ground_state)

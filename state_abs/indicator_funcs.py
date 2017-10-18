@@ -98,5 +98,3 @@ def _v_disc_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
     bucket_y = int( (v_y / v_max) / epsilon)
 
     return bucket_x == bucket_y
-
-    

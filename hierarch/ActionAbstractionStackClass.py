@@ -38,12 +38,16 @@ class ActionAbstractionStack(ActionAbstraction):
             level = self.get_num_levels()
         elif level == 0:
             # If we're at level 0, let the agent act with primitives.
-            return self.prim_actions
+            return self._convert_to_options(self.prim_actions)
 
         return self.list_of_aa[level - 1].get_actions()
 
     def set_level(self, new_level):
         self.level = new_level
+
+    def set_option_executing(self, option):
+        self.cur_option = option
+        self.is_cur_executing = True
 
     def act(self, agent, state_abstr_stack, ground_state, reward, level=None):
         '''

@@ -7,6 +7,16 @@ from HierarchyAgentClass import HierarchyAgent
 
 class DynamicHierarchyAgent(HierarchyAgent):
     
+    def __init__(self, SubAgentClass, sa_stack, aa_stack, cur_level=0, name_ext=""):
+        '''
+        Args:
+            sa_stack (StateAbstractionStack)
+            aa_stack (ActionAbstractionStack)
+            cur_level (int): Must be in [0:len(state_abstr_stack)]
+        '''
+        HierarchyAgent.__init__(self, SubAgentClass, sa_stack, aa_stack, cur_level=0, name_ext="")
+        self.num_switches = 0
+    
     def act(self, ground_state, reward):
         '''
         Args:
@@ -20,7 +30,7 @@ class DynamicHierarchyAgent(HierarchyAgent):
             # We're in a "decision" state, so change levels.
             new_level = self._compute_max_v_hat_level(ground_state)
             if self.cur_level != new_level:
-                "Changing level to:", new_level
+                self.num_switches += 1
             self.set_level(new_level)
 
         action = HierarchyAgent.act(self, ground_state, reward)
@@ -41,8 +51,12 @@ class DynamicHierarchyAgent(HierarchyAgent):
             abstr_state = self.state_abstr_stack.phi(ground_state, lvl)
             v_hat = self.agent.get_max_q_value(abstr_state)
             # print lvl, v_hat
-            if v_hat - (lvl * 0.02) > max_q:
+            if v_hat > max_q:
                 best_lvl = lvl
                 max_q = v_hat
         return best_lvl
 
+    def reset(self):
+        print "num switches this instance:", self.num_switches
+        self.num_switches = 0
+        HierarchyAgent.reset(self)
