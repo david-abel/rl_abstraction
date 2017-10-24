@@ -15,8 +15,10 @@ def main():
     # === Make Environment ===
     # ========================
     mdp_class = "four_room"
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, step_cost=0.01, grid_dim=9, gamma=1.0)
+    gamma = 1.0
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, step_cost=0.01, grid_dim=15, gamma=gamma)
     actions = environment.get_actions()
+
 
     # ==========================
     # === Make SA, AA Stacks ===
@@ -32,10 +34,10 @@ def main():
     # === Make Agents ===
     # ===================
     # baseline_agent = QLearnerAgent(actions)
-    agent_class = RMaxAgent
-    baseline_agent = agent_class(actions)
+    agent_class = QLearnerAgent
+    baseline_agent = agent_class(actions, gamma=gamma)
     rand_agent = RandomAgent(actions)
-    hierarch_r_max = HRMaxAgent(actions, sa_stack=sa_stack, aa_stack=aa_stack)
+    # hierarch_r_max = HRMaxAgent(actions, sa_stack=sa_stack, aa_stack=aa_stack)
     l0_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=0, name_ext="-$l_0$")
     l1_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=1, name_ext="-$l_1$")
     # l2_hierarch_agent = HierarchyAgent(agent_class, sa_stack=sa_stack, aa_stack=aa_stack, cur_level=2, name_ext="-$l_2$")
@@ -49,8 +51,9 @@ def main():
     # ======================
     # === Run Experiment ===
     # ======================
-    agents = [hierarch_r_max, dynamic_hierarch_agent, baseline_agent]
-    run_agents_multi_task(agents, environment, task_samples=5, steps=1000, episodes=1, reset_at_terminal=True)
+    agents = [dynamic_hierarch_agent, baseline_agent]
+
+    run_agents_multi_task(agents, environment, task_samples=10, steps=20000, episodes=1, reset_at_terminal=True)
 
 if __name__ == "__main__":
     main()

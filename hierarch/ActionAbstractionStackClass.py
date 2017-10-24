@@ -71,6 +71,7 @@ class ActionAbstractionStack(ActionAbstraction):
 
         abstr_state = state_abstr_stack.phi(ground_state, level)
         lower_state = state_abstr_stack.phi(ground_state, level - 1)
+        
         # Calls agent update.
         lower_option = self.list_of_aa[level - 1].act(agent, abstr_state, lower_state, reward)
         level -= 1

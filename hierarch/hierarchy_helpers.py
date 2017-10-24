@@ -6,7 +6,7 @@ import sys
 parent_dir = path.dirname(path.dirname(path.abspath(__file__)))
 sys.path.append(parent_dir)
 import make_abstr_mdp
-from state_abs import sa_helpers
+from state_abs import sa_helpers, indicator_funcs
 from action_abs import aa_helpers
 from action_abs.ActionAbstractionClass import ActionAbstraction
 from simple_rl.utils import make_mdp
@@ -101,12 +101,16 @@ def add_layer_to_sa_stack(mdp_distr, sa_stack, aa_stack, epsilon):
 
     # Check stack height.
     if sa_stack.get_num_levels() > 0:
+        # Make abstract MDPs to compute higher level abstractions.
         abstr_mdp_distr = make_abstr_mdp.make_abstr_mdp_distr_multi_level(mdp_distr, sa_stack, aa_stack)
     else:
         abstr_mdp_distr = mdp_distr
 
+    # Hand coded four room.
+    new_sa = sa_helpers.make_sa(mdp_distr, indic_func=indicator_funcs._four_rooms)
+
     # Make new phi.
-    new_sa = sa_helpers.make_multitask_sa(abstr_mdp_distr, epsilon=epsilon) 
+    # new_sa = sa_helpers.make_multitask_sa(abstr_mdp_distr, epsilon=epsilon) 
     new_phi = _convert_abstr_states(new_sa._phi, sa_stack.get_num_levels() + 1)
     sa_stack.add_phi(new_phi)
 

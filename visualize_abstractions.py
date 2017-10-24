@@ -25,6 +25,7 @@ from simple_rl.agents import RandomAgent
 from simple_rl.mdp import MDPDistribution
 from abstraction_experiments import *
 from state_abs import indicator_funcs as ind_funcs
+from hierarch import hierarchy_helpers
 
 colors = [[240, 163, 255], [113, 113, 198],[197, 193, 170],\
                 [113, 198, 113],[85, 85, 85], [198, 113, 113],\
@@ -307,7 +308,7 @@ def main():
 
     # MDP Setting.
     multi_task = True
-    mdp_class = "whirlpool"
+    mdp_class = "hrooms"
     is_sa = parse_args()
 
     # Make single/multi task environment.
@@ -325,6 +326,7 @@ def main():
 
     if abs_type == "sa":
         # Visualize State Abstractions.
+        hand_sa, hand_aa = get_abstractions(environment, ind_funcs._four_rooms, directed=True)
         visualize_state_abstr_grid(environment, hand_sa)
     elif abs_type == "aa":
         # Visualize Action Abstractions.
@@ -346,6 +348,9 @@ def main():
     elif abs_type == "pr":
         hi_pr_opt_action_aa = action_abs.aa_baselines.get_aa_high_prob_opt_single_act(environment, directed_sa, delta=0.3)
         visualize_options_grid(environment, directed_sa.get_ground_states(), hi_pr_opt_action_aa)
+    elif abs_type == "hierarch":
+        sa_stack, aa_stack = hierarchy_helpers.make_hierarchy(environment, num_levels=2)
+        visualize_options_grid(environment, sa_stack.get_ground_states(), aa_stack)
     else:
         print "Error: abs type not recognized (" + abs_type + "). Options include {aa, sa}."
         quit()

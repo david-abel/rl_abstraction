@@ -81,7 +81,7 @@ class AbstractionWrapper(Agent):
             We here create the default abstractions.
         '''
         if action_abstr is None:
-            self.action_abstr = ActionAbstraction(options=agent.actions, prim_actions=agent.actions)
+            self.action_abstr = ActionAbstraction(options=actions, prim_actions=actions)
         else:
             self.action_abstr = action_abstr
 
