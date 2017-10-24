@@ -85,7 +85,7 @@ class AbstractionWrapper(Agent):
         else:
             self.action_abstr = action_abstr
 
-        self.state_abstr = StateAbstraction() if state_abstr is None else state_abstr
+        self.state_abstr = StateAbstraction(phi={}) if state_abstr is None else state_abstr
 
     def act(self, ground_state, reward):
         '''
