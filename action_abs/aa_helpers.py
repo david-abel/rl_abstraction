@@ -18,7 +18,7 @@ from simple_rl.tasks import GridWorldMDP
 # ----------------------
 # -- Directed Options --
 # ----------------------
-def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=False, max_options=100):
+def get_directed_options_for_sa(mdp_distr, state_abstr, incl_self_loops=True, max_options=100):
     '''
     Args:
         mdp_distr (MDPDistribution)
@@ -181,8 +181,6 @@ def _prune_non_directed_options(options, state_pairs, state_abstr, mdp_distr):
                 new_option.set_name(str(ground_init_states[0]) + "-sl")
                 good_options.add(new_option)
 
-                if isinstance(goal_mdp, GridWorldMDP):
-                    goal_mdp.slip_prob = original
 
             continue
         else:
