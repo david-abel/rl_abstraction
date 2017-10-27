@@ -73,23 +73,22 @@ def _q_disc_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
     Returns:
         (bool): true iff:
     '''
-    v_max = 1 / (1 - 0.95)
+    v_max = 1 #/ (1 - 0.95)
 
     if epsilon == 0.0:
-        return _v_approx_indicator(state_x, state_y, vi, actions, epsilon=0)
+        return _q_approx_indicator(state_x, state_y, vi, actions, epsilon=0)
 
     for a in actions:
 
         q_x, q_y = vi.get_q_value(state_x, a), vi.get_q_value(state_y, a)
 
-        bucket_x = int( (q_x / v_max) / epsilon)
-        bucket_y = int( (q_y / v_max) / epsilon)
+        bucket_x = int( (q_x * (v_max / epsilon)))
+        bucket_y = int( (q_y * (v_max / epsilon)))
 
         if bucket_x != bucket_y:
             return False
 
     return True
-
 
 def _v_disc_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
     '''
