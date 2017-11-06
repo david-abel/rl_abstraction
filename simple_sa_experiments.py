@@ -45,8 +45,9 @@ def get_sa_experiment_agents(environment, gamma):
     # R-Max.
     rm_agent = RMaxAgent(actions, gamma=gamma)
     rm_sa_qds_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
+    rm_sa_qs_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
 
-    # agents = [rm_agent, rm_sa_qds_agent, rm_sa_hand_agent]
+    # agents = [rm_agent, rm_sa_qds_agent, ql_sa_qs_agent]
     agents = [ql_agent, ql_sa_qds_agent, ql_sa_qs_agent]
 
     if isinstance(environment.sample(), FourRoomMDP):
@@ -69,30 +70,35 @@ def get_combo_experiment_agents(environment, gamma):
     '''
     actions = environment.get_actions()
 
-    sa, aa = get_directed_option_sa_pair(environment, indic_func=ind_funcs._q_disc_approx_indicator, max_options=100, incl_self_loops=True)
+    sa, aa = get_directed_option_sa_pair(environment, indic_func=ind_funcs._q_disc_approx_indicator, max_options=100)
+    sa_qds_test = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.05)
+    sa_qs_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.1)
 
     # QLearner.
     ql_agent = QLearnerAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
 
     # Combos.
-    sa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa, name_ext="sa")
-    aa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), action_abstr=aa, name_ext="aa")
-    sa_aa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa, action_abstr=aa, name_ext="sa+aa")
+    ql_sa_qds_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
+    ql_sa_qs_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
 
-    agents = [ql_agent, sa_agent, aa_agent, sa_aa_agent]
+    # sa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa, name_ext="sa")
+    aa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), action_abstr=aa, name_ext="aa")
+    sa_aa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa, action_abstr=aa, name_ext="$\phi_{Q_d^*}+aa$")
+
+    agents = [ql_agent, ql_sa_qds_agent, ql_sa_qs_agent, aa_agent, sa_aa_agent]
 
     return agents
 
 def main():
 
     # Grab experiment params.
-    mdp_class = "hall"
-    task_samples = 100
+    mdp_class = "octo"
+    task_samples = 1000
     episodes = 1
-    steps = 1000 # 250 for four room, 30 for hall
-    grid_dim = 20
+    steps = 10000 # 250 for four room, 30 for hall
+    grid_dim = 13
     gamma = 0.95
-    experiment_type = "sa" # One of {"sa", "combo"}.
+    experiment_type = "combo" # One of {"sa", "combo"}.
     resample_at_terminal = False
     reset_at_terminal = not resample_at_terminal
 

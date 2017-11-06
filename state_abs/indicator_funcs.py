@@ -76,7 +76,7 @@ def _q_disc_approx_indicator(state_x, state_y, vi, actions, epsilon=0.0):
     v_max = 1 #/ (1 - 0.95)
 
     if epsilon == 0.0:
-        return _q_approx_indicator(state_x, state_y, vi, actions, epsilon=0)
+        return _q_eps_approx_indicator(state_x, state_y, vi, actions, epsilon=0)
 
     for a in actions:
 
