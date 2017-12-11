@@ -55,7 +55,7 @@ def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
 
     # Get Abstractions by iterating over epsilons.
     found_small_option_set = False
-    sa_epsilon, sa_eps_incr = 0.0, 0.01
+    sa_epsilon, sa_eps_incr = 0.1, 0.01
 
     if isinstance(mdp_distr.get_all_mdps()[0], TaxiOOMDP):
         sa_epsilon = 0.02
