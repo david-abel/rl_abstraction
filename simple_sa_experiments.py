@@ -123,11 +123,11 @@ def get_combo_experiment_agents(environment):
 def main():
 
     # Grab experiment params.
-    mdp_class = "hanoi"
-    task_samples = 250
+    mdp_class = "four_room"
+    task_samples = 20
     episodes = 100
-    steps = 20 # 250 for four room, 30 for hall
-    grid_dim = 4
+    steps = 100 # 250 for four room, 30 for hall
+    grid_dim = 9
     gamma = 0.95
     experiment_type = "exact_v_approx" # One of {"sa", "combo", "exact_v_approx"}.
     resample_at_terminal = False
