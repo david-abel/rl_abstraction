@@ -70,7 +70,6 @@ class StateAbstraction(object):
                 self._phi[state] = 1
 
         abstr_state = self.state_class(self._phi[state])
-
         abstr_state.set_terminal(state.is_terminal())
 
         return abstr_state

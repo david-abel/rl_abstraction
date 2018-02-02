@@ -7,20 +7,19 @@ import os
 import time
 
 # Other imports.
-from simple_rl.utils import make_mdp
+import make_mdp
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task
 from simple_rl.tasks import FourRoomMDP
 from simple_rl.planning import ValueIteration
 from AbstractValueIterationClass import AbstractValueIteration
-from hierarch.make_abstr_mdp import make_abstr_mdp
 from state_abs.StateAbstractionClass import StateAbstraction
 from action_abs.ActionAbstractionClass import ActionAbstraction
 from AbstractionWrapperClass import AbstractionWrapper
 from state_abs import indicator_funcs as ind_funcs
 from abstraction_experiments import get_sa, get_directed_option_sa_pair
 
-def clear_files(dir_name="plan_results"):
+def clear_files(dir_name):
     '''
     Args:
         dir_name (str)
@@ -29,9 +28,13 @@ def clear_files(dir_name="plan_results"):
         Removes all csv files in @dir_name.
     '''
     for extension in ["iters", "times"]:
-        for mdp_type in ["vi", "vi+sa", "vi+aa", "vi+sa+aa"]:
-            if os.path.exists(os.path.join(dir_name, extension, mdp_type) + ".csv"):
-                os.remove(os.path.join(dir_name, extension, mdp_type) + ".csv")
+        dir_w_extension = os.path.join(dir_name, extension) #, mdp_type) + ".csv"
+        if not os.path.exists(dir_w_extension):
+            os.makedirs(dir_w_extension)
+
+        for mdp_type in ["vi", "vi+sa"]:
+            if os.path.exists(os.path.join(dir_w_extension, mdp_type) + ".csv"):
+                os.remove(os.path.join(dir_w_extension, mdp_type) + ".csv")
 
 def write_datum(file_name, datum):
     '''
@@ -45,16 +48,15 @@ def write_datum(file_name, datum):
 
 def main():
 
-    clear_files()
-
     # Grab experiment params.
-    mdp_class = "hall"
-    max_grid_dim = 20
+    mdp_class = "taxi"
     gamma = 0.95
     vanilla_file = "vi.csv"
     sa_file = "vi+sa.csv"
+    file_prefix = "results/planning-" + mdp_class + "/"
+    clear_files(dir_name=file_prefix)
 
-    for grid_dim in xrange(6, 21):
+    for grid_dim in xrange(3,6):
         # ======================
         # == Make Environment ==
         # ======================
@@ -64,7 +66,7 @@ def main():
         # =======================
         # == Make Abstractions ==
         # =======================
-        sa_qds = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.05)
+        sa_qds = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.01)
 
         # ============
         # == Run VI ==
@@ -84,11 +86,11 @@ def main():
         print "vanilla", vanilla_iters, vanilla_val, vanilla_time
         print "sa:", sa_iters, sa_val, sa_time
 
-        write_datum("results/iters/" + vanilla_file, vanilla_iters)
-        write_datum("results/iters/" + sa_file, sa_iters)
+        write_datum(file_prefix + "iters/" + vanilla_file, vanilla_iters)
+        write_datum(file_prefix + "iters/" + sa_file, sa_iters)
 
-        write_datum("results/times/" + vanilla_file, vanilla_time)
-        write_datum("results/times/" + sa_file, sa_time)
+        write_datum(file_prefix + "times/" + vanilla_file, vanilla_time)
+        write_datum(file_prefix + "times/" + sa_file, sa_time)
 
 if __name__ == "__main__":
     main()

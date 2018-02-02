@@ -8,9 +8,8 @@ import argparse
 
 # Other imports.
 from simple_rl.utils import make_mdp
-from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
+from simple_rl.agents import RandomAgent, RMaxAgent, QLearningAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
-from simple_rl.planning.ValueIterationClass import ValueIteration
 from simple_rl.tasks import TaxiOOMDP
 from simple_rl.mdp import State, MDPDistribution
 from AbstractionWrapperClass import AbstractionWrapper
@@ -93,15 +92,13 @@ def get_directed_option_sa_pair(mdp_distr, indic_func, max_options=100):
 # -- State Abstractions --
 # ------------------------
 
-def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0, track_act_opt_pr=False):
+def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0):
     '''
     Args:
         mdp_distr (MDPDistributon)
         indicator_func (lambda): Indicator function from state_abs/indicator_funcs.py
         default (bool): If true, returns a blank StateAbstraction
         epsilon (float): Determines approximation for clustering.
-        track_act_prob (bool): If true, the state abstraction keeps track
-            of the probability of each action's probability in ground states.
 
     Returns:
         (StateAbstraction)
@@ -110,7 +107,7 @@ def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0, track_act_opt
     if default:
         return StateAbstraction(phi={})
 
-    state_abstr = state_abs.sa_helpers.make_sa(mdp_distr, indic_func=indic_func, state_class=State, epsilon=epsilon, track_act_opt_pr=track_act_opt_pr)
+    state_abstr = state_abs.sa_helpers.make_sa(mdp_distr, indic_func=indic_func, state_class=State, epsilon=epsilon)
 
     return state_abstr
 
@@ -225,7 +222,7 @@ def main():
     # ===================
 
     # Base Agents.
-    agent_class = QLearnerAgent if agent_class_str == "ql" else RMaxAgent
+    agent_class = QLearningAgent if agent_class_str == "ql" else RMaxAgent
     rand_agent = RandomAgent(actions)
     baseline_agent = agent_class(actions, gamma=gamma)
 

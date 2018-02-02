@@ -6,18 +6,18 @@ from collections import defaultdict
 import os
 
 # Other imports.
-from simple_rl.utils import make_mdp
-from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, DoubleQAgent, FixedPolicyAgent
+from simple_rl.agents import RandomAgent, RMaxAgent, QLearningAgent, DelayedQAgent, DoubleQAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
 from simple_rl.tasks import FourRoomMDP, HanoiMDP
 from simple_rl.planning import ValueIteration
 from simple_rl.abstraction.state_abs.StateAbstractionClass import StateAbstraction
 from simple_rl.abstraction.action_abs.ActionAbstractionClass import ActionAbstraction
 from simple_rl.abstraction.AbstractValueIterationClass import AbstractValueIteration
-from AbstractionWrapperClass import AbstractionWrapper
+from simple_rl.abstraction.AbstractionWrapperClass import AbstractionWrapper
 from state_abs import indicator_funcs as ind_funcs
 from abstraction_experiments import get_sa, get_directed_option_sa_pair
 from StochasticSAPolicyClass import StochasticSAPolicy
+import make_mdp
 
 def get_exact_vs_approx_agents(environment, incl_opt=True):
     '''
@@ -35,19 +35,19 @@ def get_exact_vs_approx_agents(environment, incl_opt=True):
     exact_qds_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.0)
     approx_qds_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.05)
     
-    ql_agent = QLearnerAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
-    ql_exact_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=exact_qds_test, name_ext="-exact")
-    ql_approx_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=approx_qds_test, name_ext="-approx")
+    ql_agent = QLearningAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
+    ql_exact_agent = AbstractionWrapper(QLearningAgent, actions, state_abstr=exact_qds_test, name_ext="-exact")
+    ql_approx_agent = AbstractionWrapper(QLearningAgent, actions, state_abstr=approx_qds_test, name_ext="-approx")
     ql_agents = [ql_agent, ql_exact_agent, ql_approx_agent]
 
     dql_agent = DoubleQAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
-    dql_exact_agent = AbstractionWrapper(DoubleQAgent, actions, str(environment), state_abstr=exact_qds_test, name_ext="-exact")
-    dql_approx_agent = AbstractionWrapper(DoubleQAgent, actions, str(environment), state_abstr=approx_qds_test, name_ext="-approx")
+    dql_exact_agent = AbstractionWrapper(DoubleQAgent, actions, state_abstr=exact_qds_test, name_ext="-exact")
+    dql_approx_agent = AbstractionWrapper(DoubleQAgent, actions, state_abstr=approx_qds_test, name_ext="-approx")
     dql_agents = [dql_agent, dql_exact_agent, dql_approx_agent]
 
     rm_agent = RMaxAgent(actions, gamma=gamma)
-    rm_exact_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=exact_qds_test, name_ext="-exact")
-    rm_approx_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=approx_qds_test, name_ext="-approx")
+    rm_exact_agent = AbstractionWrapper(RMaxAgent, actions, state_abstr=exact_qds_test, name_ext="-exact")
+    rm_approx_agent = AbstractionWrapper(RMaxAgent, actions, state_abstr=approx_qds_test, name_ext="-approx")
     rm_agents = [rm_agent, rm_exact_agent, rm_approx_agent]
 
     if incl_opt:
@@ -64,42 +64,36 @@ def get_exact_vs_approx_agents(environment, incl_opt=True):
     return ql_agents
 
 
-def get_sa_experiment_agents(environment):
+def get_sa_experiment_agents(environment, AgentClass):
     '''
     Args:
         environment (simple_rl.MDPDistribution)
-        gamma (float)
+        AgentClass (Class)
 
     Returns:
         (list)
     '''
-
     actions = environment.get_actions()
     gamma = environment.get_gamma()
 
     # State Abstractions.
-    sa_qds_test = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.05)
-    sa_qs_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.05)
+    sa_qds_test = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.01)
+    sa_qs_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.01)
+    sa_qs_exact_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.0)
 
-    # QLearners.
-    ql_agent = QLearnerAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
-    ql_sa_qds_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
-    ql_sa_qs_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
+    # Make Agents.
+    agent = AgentClass(actions, gamma=gamma)
+    sa_qds_agent = AbstractionWrapper(AgentClass, actions, state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
+    sa_qs_agent = AbstractionWrapper(AgentClass, actions, state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
+    sa_qs_exact_agent = AbstractionWrapper(AgentClass, actions, state_abstr=sa_qs_exact_test, name_ext="$\phi_{Q^*}$")
     
-    # R-Max.
-    # rm_agent = RMaxAgent(actions, gamma=gamma)
-    # rm_sa_qds_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
-    # rm_sa_qs_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
-
-    # agents = [rm_agent, rm_sa_qds_agent, ql_sa_qs_agent]
-    agents = [ql_agent, ql_sa_qds_agent, ql_sa_qs_agent]
+    agents = [agent, sa_qds_agent, sa_qs_agent, sa_qs_exact_agent]
 
     if isinstance(environment.sample(), FourRoomMDP):
         # If it's a fourroom add the handcoded one.
         sa_hand_test = get_sa(environment, indic_func=ind_funcs._four_rooms)
-        ql_sa_hand_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_hand_test, name_ext="$\phi_h$")
-        # rm_sa_hand_agent = AbstractionWrapper(RMaxAgent, actions, str(environment), state_abstr=sa_hand_test, name_ext="$\phi_h$")
-        agents += [ql_sa_hand_agent]
+        sa_hand_agent = AbstractionWrapper(AgentClass, actions, state_abstr=sa_hand_test, name_ext="$\phi_h$")
+        agents += [sa_hand_agent]
 
     return agents
 
@@ -119,16 +113,16 @@ def get_combo_experiment_agents(environment):
     sa_qs_test = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.1)
 
     # QLearner.
-    ql_agent = QLearnerAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
+    ql_agent = QLearningAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
     rmax_agent = RMaxAgent(actions, gamma=gamma, epsilon=0.1, alpha=0.05)
 
     # Combos.
-    ql_sa_qds_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
-    ql_sa_qs_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
+    ql_sa_qds_agent = AbstractionWrapper(QLearningAgent, actions, state_abstr=sa_qds_test, name_ext="$\phi_{Q_d^*}$")
+    ql_sa_qs_agent = AbstractionWrapper(QLearningAgent, actions, state_abstr=sa_qs_test, name_ext="$\phi_{Q_\epsilon^*}$")
 
-    # sa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa, name_ext="sa")
-    aa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), action_abstr=aa, name_ext="aa")
-    sa_aa_agent = AbstractionWrapper(QLearnerAgent, actions, str(environment), state_abstr=sa, action_abstr=aa, name_ext="$\phi_{Q_d^*}+aa$")
+    # sa_agent = AbstractionWrapper(QLearningAgent, actions, str(environment), state_abstr=sa, name_ext="sa")
+    aa_agent = AbstractionWrapper(QLearningAgent, actions, action_abstr=aa, name_ext="aa")
+    sa_aa_agent = AbstractionWrapper(QLearningAgent, actions, state_abstr=sa, action_abstr=aa, name_ext="$\phi_{Q_d^*}+aa$")
 
     agents = [ql_agent, ql_sa_qds_agent, ql_sa_qs_agent, aa_agent, sa_aa_agent]
 
@@ -166,16 +160,17 @@ def get_optimal_policies(environment):
 def main():
 
     # Grab experiment params.
-    mdp_class = "hall"
-    task_samples = 3000
-    episodes = 1
-    steps = 30 # 250 for four room, 30 for hall
-    grid_dim = 10
+    mdp_class = "four_room"
+    task_samples = 200
+    episodes = 250
+    steps = 40 # 250 for four room, 30 for hall
+    grid_dim = 5 if mdp_class is "taxi" else 11
     gamma = 0.95
+    AgentClass = QLearningAgent
     experiment_type = "sa" # One of {"sa", "combo", "exact_v_approx"}.
     multi_task = True
     resample_at_terminal = False
-    reset_at_terminal = multi_task and not resample_at_terminal # True
+    reset_at_terminal = False #multi_task and not resample_at_terminal # True
 
     # ======================
     # == Make Environment ==
@@ -189,7 +184,7 @@ def main():
     agents = []
     if experiment_type == "sa":
         # SA experiment.
-        agents = get_sa_experiment_agents(environment)
+        agents = get_sa_experiment_agents(environment, AgentClass)
     elif experiment_type == "combo":
         # AA experiment.
         agents = get_combo_experiment_agents(environment)
@@ -203,9 +198,9 @@ def main():
 
     # Run!
     if multi_task:
-        run_agents_multi_task(agents, environment, task_samples=task_samples, steps=steps, episodes=episodes, reset_at_terminal=reset_at_terminal, resample_at_terminal=resample_at_terminal, verbose=False)
+        run_agents_multi_task(agents, environment, task_samples=task_samples, steps=steps, episodes=episodes, reset_at_terminal=reset_at_terminal, resample_at_terminal=resample_at_terminal)
     else:
-        run_agents_on_mdp(agents, environment, instances=task_samples, steps=steps, episodes=episodes, reset_at_terminal=reset_at_terminal, is_rec_disc_reward=True)
+        run_agents_on_mdp(agents, environment, instances=task_samples, steps=steps, episodes=episodes, reset_at_terminal=reset_at_terminal, track_disc_reward=False)
 
 if __name__ == "__main__":
 	main()
