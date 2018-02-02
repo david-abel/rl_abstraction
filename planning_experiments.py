@@ -8,7 +8,7 @@ import time
 
 # Other imports.
 import make_mdp
-from simple_rl.agents import RandomAgent, RMaxAgent, QLearnerAgent, FixedPolicyAgent
+from simple_rl.agents import RandomAgent, RMaxAgent, QLearningAgent, FixedPolicyAgent
 from simple_rl.run_experiments import run_agents_multi_task
 from simple_rl.tasks import FourRoomMDP
 from simple_rl.planning import ValueIteration
