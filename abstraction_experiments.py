@@ -9,7 +9,7 @@ import argparse
 # Other imports.
 from simple_rl.utils import make_mdp
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearningAgent, FixedPolicyAgent
-from simple_rl.run_experiments import run_agents_multi_task, run_agents_on_mdp
+from simple_rl.run_experiments import run_agents_lifelong, run_agents_on_mdp
 from simple_rl.tasks import TaxiOOMDP
 from simple_rl.mdp import State, MDPDistribution
 from AbstractionWrapperClass import AbstractionWrapper
@@ -108,6 +108,23 @@ def get_sa(mdp_distr, indic_func=None, default=False, epsilon=0.0):
         return StateAbstraction(phi={})
 
     state_abstr = state_abs.sa_helpers.make_sa(mdp_distr, indic_func=indic_func, state_class=State, epsilon=epsilon)
+
+    return state_abstr
+
+def compute_pac_sa(mdp_distr, indic_func=None, default=False, phi_epsilon=0.05, pac_delta=0.2):
+    '''
+    Args:
+        mdp_distr (MDPDistributon)
+        indicator_func (lambda): Indicator function from state_abs/indicator_funcs.py
+        default (bool): If true, returns a blank StateAbstraction
+        phi_epsilon (float): Determines approximation for Q^*_epsilon clustering.
+        pac_delta (float): Determines how confident the resulting p_hat should be.
+
+    Returns:
+        (StateAbstraction)
+    '''
+
+    state_abstr = state_abs.sa_helpers.get_pac_sa_from_samples(mdp_distr, indic_func=indic_func, phi_epsilon=epsilon, pac_delta=0.2)
 
     return state_abstr
 
