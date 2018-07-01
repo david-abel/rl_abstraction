@@ -4,6 +4,6 @@ Experiments require [simple_rl](https://github.com/david-abel/simple_rl), which 
 
 	pip install simple_rl
 
-For the ICML paper, run _run_icml_learning_experiments.py_ to reproduce plots from Figure 4 and Figure 5. Run _run_icml_planning_experiments.py_ to reproduce plots from Figure 6.
+For the ICML paper, run _run_icml_learning_experiments.py_ to reproduce plots from Figure 3a/3b and Figure 4. Run _run_icml_planning_experiments.py_ to reproduce plots from Figure 5. Run _chain.py_ to reproduce the plot in Figure 2.
 
 Authors: David Abel and Dilip Arumugam. Let us know if you have issues!
