@@ -77,8 +77,7 @@ def make_mdp_distr(mdp_class="grid", grid_dim=9, horizon=0, step_cost=0, gamma=0
     upworld_goal_locs = [(i, height) for i in xrange(1, 30)]
 
     # Four room.
-    four_room_goal_locs = [(width, height),(width, 1), (1, height)] #, (width - width / 2 + 1, height),\
-                            # (width, height - height / 2 + 1), (width, 1), (width - width / 2 + 1, 1),\
+    four_room_goal_locs = [(width, height),(width, 1), (1, height)] #, (width - width / 2 + 1, height), (width, height - height / 2 + 1), (width, 1), (width - width / 2 + 1, 1)]
                             # (width, 1 + width / 2 - 1),(1, height),(1, height - height / 2 + 1),\
                             # (1 + height / 2 - 1, height)]
                             
@@ -104,21 +103,14 @@ def make_mdp_distr(mdp_class="grid", grid_dim=9, horizon=0, step_cost=0, gamma=0
 
     for i in xrange(num_mdps):
 
-        new_mdp = {"hrooms":make_grid_world_from_file("hierarch_rooms.txt", num_goals=7, randomize=False),
-                    "octo":make_grid_world_from_file("octogrid.txt", num_goals=12, randomize=False, goal_num=i),
+        new_mdp = {"hrooms":make_grid_world_from_file("utils/hierarch_rooms.txt", num_goals=7, randomize=False),
+                    "octo":make_grid_world_from_file("utils/octogrid.txt", num_goals=12, randomize=False, goal_num=i),
                     "upworld":GridWorldMDP(width=30, height=height, rand_init=False, goal_locs=goal_loc_dict["upworld"], name="upworld", is_goal_terminal=True),
                     "corridor":GridWorldMDP(width=20, height=1, init_loc=(10, 1), goal_locs=[goal_loc_dict["corridor"][i % len(goal_loc_dict["corridor"])]], is_goal_terminal=True, name="corridor"),
                     "grid":GridWorldMDP(width=width, height=height, rand_init=True, goal_locs=[goal_loc_dict["grid"][i % len(goal_loc_dict["grid"])]], is_goal_terminal=True),
                     "four_room":FourRoomMDP(width=width, height=height, goal_locs=[goal_loc_dict["four_room"][i % len(goal_loc_dict["four_room"])]], is_goal_terminal=True),
                     "color":ColorMDP(width=width, height=height, num_colors=4, goal_locs=[goal_loc_dict["four_room"][i % len(goal_loc_dict["four_room"])]], is_goal_terminal=True),
-                    "tight_four_room":FourRoomMDP(width=width, height=height, goal_locs=[goal_loc_dict["tight_four_room"][i % len(goal_loc_dict["tight_four_room"])]], is_goal_terminal=True, name="tight_four_room"),
-                    # THESE GOALS ARE SPECIFIED IMPLICITLY:
-                    "pblocks_grid":make_grid_world_from_file("pblocks_grid.txt", randomize=True, slip_prob=0.1),
-                    "chain":ChainMDP(num_states=10, reset_val=random.choice([0, 0.01, 0.05, 0.1, 0.2, 0.5])),
-                    "random":RandomMDP(num_states=40, num_rand_trans=random.randint(1,10)),
-                    "taxi":TaxiOOMDP(3, 4, slip_prob=0.0, agent=agent, walls=walls, \
-                                    passengers=[{"x":2, "y":1, "dest_x":random.choice([2,3]), "dest_y":random.choice([2,3]), "in_taxi":0},
-                                                {"x":1, "y":2, "dest_x":random.choice([1,2]), "dest_y":random.choice([1,4]), "in_taxi":0}])}[mdp_class]
+                    "tight_four_room":FourRoomMDP(width=width, height=height, goal_locs=[goal_loc_dict["tight_four_room"][i % len(goal_loc_dict["tight_four_room"])]], is_goal_terminal=True, name="tight_four_room")}[mdp_class]
 
         new_mdp.set_step_cost(step_cost)
         new_mdp.set_gamma(gamma)

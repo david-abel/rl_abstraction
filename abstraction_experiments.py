@@ -12,7 +12,7 @@ from simple_rl.agents import RandomAgent, RMaxAgent, QLearningAgent, FixedPolicy
 from simple_rl.run_experiments import run_agents_lifelong, run_agents_on_mdp
 from simple_rl.tasks import TaxiOOMDP
 from simple_rl.mdp import State, MDPDistribution
-from AbstractionWrapperClass import AbstractionWrapper
+from simple_rl.abstraction.AbstractionWrapperClass import AbstractionWrapper
 from state_abs.StateAbstractionClass import StateAbstraction
 from action_abs.ActionAbstractionClass import ActionAbstraction
 import state_abs
