@@ -14,7 +14,7 @@ from action_abs.OptionClass import Option
 from action_abs.PolicyClass import Policy
 from action_abs.PolicyFromDictClass import make_dict_from_lambda, PolicyFromDict
 from simple_rl.planning import ValueIteration
-from simple_rl.run_experiments import run_agents_multi_task
+from simple_rl.run_experiments import run_agents_lifelong
 from simple_rl.tasks.grid_world import GridWorldMDPClass
 
 
