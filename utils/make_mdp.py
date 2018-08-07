@@ -77,9 +77,9 @@ def make_mdp_distr(mdp_class="grid", grid_dim=9, horizon=0, step_cost=0, gamma=0
     upworld_goal_locs = [(i, height) for i in xrange(1, 30)]
 
     # Four room.
-    four_room_goal_locs = [(width, height),(width, 1), (1, height)] #, (width - width / 2 + 1, height), (width, height - height / 2 + 1), (width, 1), (width - width / 2 + 1, 1)]
-                            # (width, 1 + width / 2 - 1),(1, height),(1, height - height / 2 + 1),\
-                            # (1 + height / 2 - 1, height)]
+    four_room_goal_locs = [(width, height), (width, 1), (1, height), (1, height - 2), (width - 2, height - 2), (width - 2, 1)]
+
+    print four_room_goal_locs
                             
     tight_four_room_goal_locs = [(width, height), (width, height-1), (width-1, height), (width, height - 2), (width - 2, height), (width-1, height-1)]
 
@@ -103,8 +103,8 @@ def make_mdp_distr(mdp_class="grid", grid_dim=9, horizon=0, step_cost=0, gamma=0
 
     for i in xrange(num_mdps):
 
-        new_mdp = {"hrooms":make_grid_world_from_file("utils/hierarch_rooms.txt", num_goals=7, randomize=False),
-                    "octo":make_grid_world_from_file("utils/octogrid.txt", num_goals=12, randomize=False, goal_num=i),
+        new_mdp = {"hrooms":make_grid_world_from_file("hierarch_rooms.txt", num_goals=7, randomize=False),
+                    "octo":make_grid_world_from_file("octogrid.txt", num_goals=12, randomize=False, goal_num=i),
                     "upworld":GridWorldMDP(width=30, height=height, rand_init=False, goal_locs=goal_loc_dict["upworld"], name="upworld", is_goal_terminal=True),
                     "corridor":GridWorldMDP(width=20, height=1, init_loc=(10, 1), goal_locs=[goal_loc_dict["corridor"][i % len(goal_loc_dict["corridor"])]], is_goal_terminal=True, name="corridor"),
                     "grid":GridWorldMDP(width=width, height=height, rand_init=True, goal_locs=[goal_loc_dict["grid"][i % len(goal_loc_dict["grid"])]], is_goal_terminal=True),

@@ -14,7 +14,7 @@ from action_abs.OptionClass import Option
 from action_abs.PolicyClass import Policy
 from action_abs.PolicyFromDictClass import make_dict_from_lambda, PolicyFromDict
 from simple_rl.planning import ValueIteration
-from simple_rl.run_experiments import run_agents_multi_task
+from simple_rl.run_experiments import run_agents_lifelong
 from simple_rl.tasks.grid_world import GridWorldMDPClass
 
 
@@ -368,17 +368,17 @@ if __name__ == '__main__':
     gamma = mdp_distr.keys()[0].gamma
 
 
-    ql_agent = QLearnerAgent(actions, gamma=gamma)
+    ql_agent = QLearningAgent(actions, gamma=gamma)
 
     pblocks_aa = get_policy_blocks_aa(mdp_distr, num_options=5, task_samples=20, incl_prim_actions=True)
     regular_sa = get_sa(mdp_distr, default=True)
 
-    pblocks_ql_agent = AbstractionWrapper(QLearnerAgent, actions, state_abs=regular_sa, action_abs=pblocks_aa, name_ext="aa")
+    pblocks_ql_agent = AbstractionWrapper(QLearningAgent, actions, state_abs=regular_sa, action_abs=pblocks_aa, name_ext="aa")
 
     agents = [pblocks_ql_agent, ql_agent]
 
     mdp_distr = MDPDistribution(mdp_distr)
-    run_agents_multi_task(agents, mdp_distr, task_samples=100, episodes=1, steps=10000)
+    run_agents_lifelong(agents, mdp_distr, task_samples=100, episodes=1, steps=10000)
     
     from visualize_abstractions import visualize_options_grid
 
