@@ -10,7 +10,7 @@ import random
 from collections import defaultdict
 
 # Other imports.
-from simple_rl.tasks import ChainMDP, GridWorldMDP, TaxiOOMDP, RandomMDP, FourRoomMDP, HanoiMDP
+from simple_rl.tasks import ChainMDP, GridWorldMDP, TaxiOOMDP, RandomMDP, FourRoomMDP, HanoiMDP, TrenchOOMDP
 from simple_rl.tasks.grid_world.GridWorldMDPClass import make_grid_world_from_file
 from simple_rl.mdp import MDPDistribution
 from ColorMDPClass import ColorMDP
@@ -32,6 +32,11 @@ def make_mdp(mdp_class="grid", grid_dim=7):
     passengers = [{"x":grid_dim / 2, "y":grid_dim / 2, "dest_x":grid_dim-2, "dest_y":2, "in_taxi":0}]
     walls = []
 
+    # Trench stuff
+    tr_agent = {"x": 1, "y": 1, "dx": 1, "dy": 0, "dest_x": grid_dim, "dest_y": grid_dim, "has_block": 0}
+    blocks = [{"x": grid_dim, "y": 1}]
+    lavas = [{"x": x, "y": y} for x, y in map(lambda z: (z + 1, (grid_dim + 1) / 2), range(grid_dim))]
+
     # Do grids separately to avoid making error-prone domains.
     if mdp_class == "four_room":
         mdp = FourRoomMDP(width=width, height=height, goal_locs=[four_room_goal_loc])
@@ -40,7 +45,8 @@ def make_mdp(mdp_class="grid", grid_dim=7):
             "chain":ChainMDP(num_states=grid_dim),
             "random":RandomMDP(num_states=50, num_rand_trans=2),
             "hanoi":HanoiMDP(num_pegs=grid_dim, num_discs=3),
-            "taxi":TaxiOOMDP(width=grid_dim, height=grid_dim, agent=agent, walls=walls, passengers=passengers)}[mdp_class]
+            "taxi":TaxiOOMDP(width=grid_dim, height=grid_dim, agent=agent, walls=walls, passengers=passengers),
+            "trench":TrenchOOMDP(width=grid_dim, height=3, agent=tr_agent, blocks=blocks, lavas=lavas)}[mdp_class]
 
     return mdp
 
