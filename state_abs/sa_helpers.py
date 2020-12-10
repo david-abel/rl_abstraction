@@ -62,6 +62,9 @@ def compute_planned_state_abs(mdp_class="grid", num_mdps=30):
     Args:
         mdp_class (str)
         num_mdps (int)
+    
+    Returns:
+        (StateAbstraction)
     '''
 
     # Setup grid params for MDPs.
@@ -209,3 +212,14 @@ def agent_q_estimate_equal(state_x, state_y, agent, state_abs, action_abs=[], ep
 
 def agent_always_false(state_x, state_y, agent):
     return False
+
+def load_sa(file_name):
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    if os.path.isfile(this_dir + "/cached_sa/" + file_name):
+        return cPickle.load( open( this_dir + "/cached_sa/" + file_name, "rb" ) )
+    else:
+        print "Warning: no saved State Abstraction with name '" + file_name + "'."
+        
+def save_sa(sa, file_name):
+    this_dir = os.path.dirname(os.path.realpath(__file__))
+    cPickle.dump( sa, open( this_dir + "/cached_sa/" + file_name, "w" ) )
