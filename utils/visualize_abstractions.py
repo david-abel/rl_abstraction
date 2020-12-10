@@ -5,6 +5,7 @@ import sys
 import random
 import argparse
 from collections import defaultdict
+import os, inspect
 
 # Pygame setup.
 try:
@@ -16,13 +17,17 @@ except ImportError:
     quit()
 
 # Other imports.
-from simple_rl.utils import make_mdp
 from simple_rl.utils import mdp_visualizer
 from simple_rl.agents import RandomAgent
 from simple_rl.mdp import MDPDistribution
+from simple_rl.abstraction.state_abs import indicator_funcs as ind_funcs
+from simple_rl.abstraction.state_abs.sa_helpers import visualize_state_abstr_grid
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
 from abstraction_experiments import *
-from state_abs import indicator_funcs as ind_funcs
 from hierarch import hierarchy_helpers
+import make_mdp
 
 colors = [[240, 163, 255], [153, 63, 0],\
                 [113, 113, 198],\
@@ -31,91 +36,6 @@ colors = [[240, 163, 255], [153, 63, 0],\
                 [184, 221, 255],[197, 193, 170],[142, 142, 56],\
                 [56, 142, 142], [113, 198, 113],[245, 228, 199]]
 
-def visualize_state_abstr_grid(grid_mdp, state_abstr, scr_width=720, scr_height=720):
-    '''
-    Args:
-        grid_mdp (GridWorldMDP)
-        state_abstr (StateAbstraction)
-
-    Summary:
-        Visualizes the state abstraction.
-    '''
-    pygame.init()
-    title_font = pygame.font.SysFont("CMU Serif", 32)
-    small_font = pygame.font.SysFont("CMU Serif", 22)
-
-    if isinstance(grid_mdp, MDPDistribution):
-        goal_locs = set([])
-        for m in grid_mdp.get_all_mdps():
-            for g in m.get_goal_locs():
-                goal_locs.add(g)
-        grid_mdp = grid_mdp.sample()
-    else:
-        goal_locs = grid_mdp.get_goal_locs()
-
-    # Pygame init.  
-    screen = pygame.display.set_mode((scr_width, scr_height))
-    pygame.init()
-    screen.fill((255, 255, 255))
-    pygame.display.update()
-    mdp_visualizer._draw_title_text(grid_mdp, screen)
-
-    # Prep some dimensions to make drawing easier.
-    scr_width, scr_height = screen.get_width(), screen.get_height()
-    width_buffer = scr_width / 10.0
-    height_buffer = 30 + (scr_height / 10.0) # Add 30 for title.
-    cell_width = (scr_width - width_buffer * 2) / grid_mdp.width
-    cell_height = (scr_height - height_buffer * 2) / grid_mdp.height
-    font_size = int(min(cell_width, cell_height) / 4.0)
-    reg_font = pygame.font.SysFont("CMU Serif", font_size)
-    cc_font = pygame.font.SysFont("Courier", font_size*2 + 2)
-
-    # Setup states to compute abstr states later.
-    state_dict = defaultdict(lambda : defaultdict(bool))
-    for s in state_abstr.get_ground_states():
-        state_dict[s.x][s.y] = s
-
-    # Add colors until we have enough.
-    while state_abstr.get_num_abstr_states() > len(colors):
-        colors.append((random.randint(0,255), random.randint(0,255), random.randint(0,255)))
-
-    # For each row:
-    for i in range(grid_mdp.width):
-        # For each column:
-        for j in range(grid_mdp.height):
-
-            if not state_dict[i+1][grid_mdp.height - j]:
-                # An unreachable state.
-                continue
-
-            top_left_point = width_buffer + cell_width*i, height_buffer + cell_height*j
-            s = state_dict[i+1][grid_mdp.height - j]
-            abs_state = state_abstr.phi(s)
-            cluster_num = state_abstr.get_abs_cluster_num(abs_state)
-            abstr_state_color = colors[cluster_num]
-            r = pygame.draw.rect(screen, abstr_state_color, (top_left_point[0] + 5, top_left_point[1] + 5) + (cell_width-10, cell_height-10), 0)
-            r = pygame.draw.rect(screen, (46, 49, 49), top_left_point + (cell_width, cell_height), 3)
-
-            if grid_mdp.is_wall(i+1, grid_mdp.height - j):
-                # Draw the walls.
-                top_left_point = width_buffer + cell_width*i + 5, height_buffer + cell_height*j + 5
-                r = pygame.draw.rect(screen, (255, 255, 255), top_left_point + (cell_width-10, cell_height-10), 0)
-                text = reg_font.render("(wall)", True, (46, 49, 49))
-                screen.blit(text, (top_left_point[0] + 10, top_left_point[1] + 20))
-
-            if (i+1,grid_mdp.height - j) in goal_locs:
-                # Draw goal.
-                circle_center = int(top_left_point[0] + cell_width/2.0), int(top_left_point[1] + cell_height/2.0)
-                circler_color = (154, 195, 157)
-                pygame.draw.circle(screen, circler_color, circle_center, int(min(cell_width, cell_height) / 3.0))
-
-                # Goal text.                
-                text = reg_font.render("Goal", True, (46, 49, 49))
-                offset = int(min(cell_width, cell_height) / 3.0)
-                goal_text_point = circle_center[0] - font_size, circle_center[1] - font_size/1.5
-                screen.blit(text, goal_text_point)
-
-    pygame.display.flip()
 
 def visualize_options_grid(grid_mdp, state_space, action_abstr, scr_width=720, scr_height=720):
     '''
@@ -141,7 +61,7 @@ def visualize_options_grid(grid_mdp, state_space, action_abstr, scr_width=720, s
     else:
         goal_locs = grid_mdp.get_goal_locs()
 
-    # Pygame init.  
+    # Pygame init.
     screen = pygame.display.set_mode((scr_width, scr_height))
     pygame.init()
     screen.fill((255, 255, 255))
@@ -319,27 +239,20 @@ def parse_args():
 def main():
 
     # MDP Setting.
-    multi_task = False
+    lifelong = True
     mdp_class = "four_room"
-    grid_dim = 9
+    grid_dim = 11
     is_sa = parse_args()
 
     # Make single/multi task environment.
-    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=grid_dim, gamma=0.95) if multi_task else make_mdp.make_mdp(mdp_class=mdp_class, grid_dim=grid_dim)
+    environment = make_mdp.make_mdp_distr(mdp_class=mdp_class, grid_dim=grid_dim, gamma=0.9) if lifelong else make_mdp.make_mdp(mdp_class=mdp_class, grid_dim=grid_dim)
     actions = environment.get_actions()
-
-    # Grab SA and AA for each abstraction agent.   
-    # directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_approx_indicator, directed=True, max_options=30)
-    # directed_sa, directed_aa = get_abstractions(environment, ind_funcs._v_disc_approx_indicator, directed=True, max_options=100)
-
-    # regular_sa, regular_aa = directed_sa, get_aa(environment, default=True)
-
     abs_type = parse_args()
 
     if abs_type == "sa":
-        # Visualize State Abstractions.
+        # (DEFAULT) Visualize State Abstractions.
         # hand_sa, hand_aa = get_abstractions(environment, ind_funcs._four_rooms, directed=True)
-        # sa = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.02)
+        # sa = get_sa(environment, indic_func=ind_funcs._q_disc_approx_indicator, epsilon=0.2)
         sa = get_sa(environment, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.2)
         visualize_state_abstr_grid(environment, sa)
     elif abs_type == "aa":

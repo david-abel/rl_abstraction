@@ -4,6 +4,7 @@ import cPickle
 import os
 import sys
 import itertools
+import numpy as np
 
 # Other imports.
 from simple_rl.planning.ValueIterationClass import ValueIteration
@@ -12,7 +13,36 @@ from simple_rl.mdp import MDPDistribution
 import indicator_funcs as ind_funcs
 from StateAbstractionClass import StateAbstraction
 
-def merge_state_abs(list_of_sa, track_act_opt_pr=False):
+
+def get_pac_sa_from_samples(mdp_distr, indic_func=ind_funcs._q_eps_approx_indicator, phi_epsilon=0.0, delta=0.2):
+    '''
+    Args:
+        mdp_distr (MDPDistribution)
+        indicator_func (S x S --> {0,1})
+        epsilon (float)
+        delta (float)
+
+    Returns:
+        (StateAbstraction)
+
+
+    Summary:
+        Computes a PAC state abstraction.
+    '''
+    sample_eps = 1.0
+    pac_sample_bound = max(int(np.log(1 / delta) / sample_eps**2), 2)
+    print("PAC sample bound:", pac_sample_bound)
+    sa_list = []
+    for sample in xrange(pac_sample_bound):
+        mdp = mdp_distr.sample()
+        sa = make_singletask_sa(mdp, indic_func, phi_epsilon) #, prob_of_mdp=mdp_distr.get_prob_of_mdp(mdp))
+        sa_list += [sa]
+
+    pac_state_abstr = merge_state_abs(sa_list)
+
+    return pac_state_abstr
+
+def merge_state_abs(list_of_sa):
     '''
     Args:
         list_of_sa (list of StateAbstraction)
@@ -51,11 +81,9 @@ def compute_planned_state_abs(mdp_class="grid", num_mdps=30):
     # Merge
     merged_sa = merge_state_abs(state_abstrs)
 
-    # Visualize on the expected MDP.
-    avged_mdp = GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=goal_locs)
-    visualize_mdp(avged_mdp, merged_sa.phi, file_name="abstr-mdp.png")
+    return merged_sa
 
-def make_sa(mdp, indic_func=ind_funcs._q_eps_approx_indicator, state_class=State, epsilon=0.0, save=False, track_act_opt_pr=False):
+def make_sa(mdp, indic_func=ind_funcs._q_eps_approx_indicator, state_class=State, epsilon=0.0):
     '''
     Args:
         mdp (MDP)
@@ -66,18 +94,17 @@ def make_sa(mdp, indic_func=ind_funcs._q_eps_approx_indicator, state_class=State
         Creates and saves a state abstraction.
     '''
     print "  Making state abstraction... "
-    q_equiv_sa = StateAbstraction(phi={}, track_act_opt_pr=track_act_opt_pr)
+    new_sa = StateAbstraction(phi={})
     if isinstance(mdp, MDPDistribution):
-        q_equiv_sa = make_multitask_sa(mdp, state_class=state_class, indic_func=indic_func, epsilon=epsilon, track_act_opt_pr=track_act_opt_pr)
+        new_sa = make_multitask_sa(mdp, state_class=state_class, indic_func=indic_func, epsilon=epsilon)
     else:
-        q_equiv_sa = make_singletask_sa(mdp, state_class=state_class, indic_func=indic_func, epsilon=epsilon, track_act_opt_pr=track_act_opt_pr)
+        new_sa = make_singletask_sa(mdp, state_class=state_class, indic_func=indic_func, epsilon=epsilon)
 
-    if save:
-        save_sa(q_equiv_sa, str(mdp) + ".p")
+    print "  (final SA) Num abstract states:", new_sa.get_num_abstr_states()
 
-    return q_equiv_sa
+    return new_sa
 
-def make_multitask_sa(mdp_distr, state_class=State, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.0, aa_single_act=True, track_act_opt_pr=False):
+def make_multitask_sa(mdp_distr, state_class=State, indic_func=ind_funcs._q_eps_approx_indicator, epsilon=0.0, aa_single_act=True):
     '''
     Args:
         mdp_distr (MDPDistribution)
@@ -91,14 +118,14 @@ def make_multitask_sa(mdp_distr, state_class=State, indic_func=ind_funcs._q_eps_
     '''
     sa_list = []
     for mdp in mdp_distr.get_mdps():
-        sa = make_singletask_sa(mdp, indic_func, state_class, epsilon, aa_single_act=aa_single_act, prob_of_mdp=mdp_distr.get_prob_of_mdp(mdp), track_act_opt_pr=track_act_opt_pr)
+        sa = make_singletask_sa(mdp, indic_func, state_class, epsilon, aa_single_act=aa_single_act, prob_of_mdp=mdp_distr.get_prob_of_mdp(mdp))
         sa_list += [sa]
 
-    multitask_sa = merge_state_abs(sa_list, track_act_opt_pr=track_act_opt_pr)
+    multitask_sa = merge_state_abs(sa_list)
 
     return multitask_sa
 
-def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=False, prob_of_mdp=1.0, track_act_opt_pr=False):
+def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=False, prob_of_mdp=1.0):
     '''
     Args:
         mdp (MDP)
@@ -122,11 +149,11 @@ def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=
 
     print "\tMaking state abstraction...",
     sys.stdout.flush()
-    sa = StateAbstraction(phi={}, state_class=state_class, track_act_opt_pr=track_act_opt_pr)
+    sa = StateAbstraction(phi={}, state_class=state_class)
     clusters = defaultdict(set)
     num_states = len(vi.get_states())
-
     actions = mdp.get_actions()
+    
     # Find state pairs that satisfy the condition.
     for i, state_x in enumerate(vi.get_states()):
         sys.stdout.flush()
@@ -150,12 +177,6 @@ def make_singletask_sa(mdp, indic_func, state_class, epsilon=0.0, aa_single_act=
             if s in clusters.keys():
                 clusters.pop(s)
     
-    if aa_single_act:
-        # Put all optimal actions in a set associated with the ground state.
-        for ground_s in sa.get_ground_states():
-            a_star_set = set(vi.get_max_q_actions(ground_s))
-            sa.set_actions_state_opt_dict(ground_s, a_star_set, prob_of_mdp)
-
     print " done."
     print "\tGround States:", num_states
     print "\tAbstract:", sa.get_num_abstr_states()
@@ -188,14 +209,3 @@ def agent_q_estimate_equal(state_x, state_y, agent, state_abs, action_abs=[], ep
 
 def agent_always_false(state_x, state_y, agent):
     return False
-
-def load_sa(file_name):
-    this_dir = os.path.dirname(os.path.realpath(__file__))
-    if os.path.isfile(this_dir + "/cached_sa/" + file_name):
-        return cPickle.load( open( this_dir + "/cached_sa/" + file_name, "rb" ) )
-    else:
-        print "Warning: no saved State Abstraction with name '" + file_name + "'."
-        
-def save_sa(sa, file_name):
-    this_dir = os.path.dirname(os.path.realpath(__file__))
-    cPickle.dump( sa, open( this_dir + "/cached_sa/" + file_name, "w" ) )
