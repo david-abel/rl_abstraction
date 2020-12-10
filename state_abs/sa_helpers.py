@@ -32,6 +32,9 @@ def compute_planned_state_abs(mdp_class="grid", num_mdps=30):
     Args:
         mdp_class (str)
         num_mdps (int)
+    
+    Returns:
+        (StateAbstraction)
     '''
 
     # Setup grid params for MDPs.
@@ -51,9 +54,7 @@ def compute_planned_state_abs(mdp_class="grid", num_mdps=30):
     # Merge
     merged_sa = merge_state_abs(state_abstrs)
 
-    # Visualize on the expected MDP.
-    avged_mdp = GridWorldMDP(width=width, height=height, init_loc=(1, 1), goal_locs=goal_locs)
-    visualize_mdp(avged_mdp, merged_sa.phi, file_name="abstr-mdp.png")
+    return merged_sa
 
 def make_sa(mdp, indic_func=ind_funcs._q_eps_approx_indicator, state_class=State, epsilon=0.0, save=False, track_act_opt_pr=False):
     '''
