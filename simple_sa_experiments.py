@@ -4,6 +4,7 @@
 import random
 from collections import defaultdict
 import os
+import argparse
 
 # Other imports.
 from simple_rl.agents import RandomAgent, RMaxAgent, QLearningAgent, DelayedQAgent, DoubleQAgent, FixedPolicyAgent
@@ -202,7 +203,8 @@ def get_params(set_manually=False):
         # Grab experiment params.
         mdp_class, task_samples, episodes, steps, grid_dim, agent_class_str = parse_args()
 
-        if agent_class_str == "dql":
+        print(mdp_class)
+        if "DelayedQAgent" in agent_class_str:
             AgentClass = DelayedQAgent
         else:
             AgentClass = QLearningAgent
@@ -212,9 +214,9 @@ def get_params(set_manually=False):
 def main():
 
     # Set Params.
-    mdp_class, task_samples, episodes, steps, grid_dim, AgentClass = get_params(set_manually=True)
+    mdp_class, task_samples, episodes, steps, grid_dim, AgentClass = get_params(set_manually=False)
     experiment_type = "sa"
-    lifelong = False
+    lifelong = True
     resample_at_terminal = False
     reset_at_terminal = False
     gamma = 0.95

@@ -61,7 +61,7 @@ class ColorMDP(MDP):
         self.slip_prob = slip_prob
         self.name = name
 
-    def _reward_func(self, state, action):
+    def _reward_func(self, state, action, next_state):
         '''
         Args:
             state (State)
